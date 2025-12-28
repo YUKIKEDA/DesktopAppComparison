@@ -200,3 +200,20 @@ $RECYCLE.BIN/
 *.bak
 *.tmp
 *.temp
+
+# Logs
+logs
+*.log
+pnpm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.idea
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
