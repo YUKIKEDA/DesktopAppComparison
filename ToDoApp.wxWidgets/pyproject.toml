@@ -1,9 +1,12 @@
 [project]
 name = "todoapp-wxwidgets"
 version = "0.1.0"
-description = "Add your description here"
+description = "Todo App implemented with wxPython - same functionality as Electron version"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "wxpython>=4.2.4",
 ]
+
+[project.scripts]
+todoapp = "main:main"
