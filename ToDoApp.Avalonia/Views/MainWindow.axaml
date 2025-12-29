@@ -1,20 +1,346 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ToDoApp.Avalonia.ViewModels"
+        xmlns:models="using:ToDoApp.Avalonia.Models"
+        xmlns:converters="using:ToDoApp.Avalonia.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="900"
         x:Class="ToDoApp.Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="ToDoApp.Avalonia">
+        Title="Todo App"
+        Width="1400"
+        Height="900"
+        MinWidth="800"
+        MinHeight="600"
+        KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:DateTimeToStringConverter x:Key="DateTimeToStringConverter" />
+        <converters:DateTimeToDateTimeOffsetConverter x:Key="DateTimeToDateTimeOffsetConverter" />
+        <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
+        <converters:SelectedIdsConverter x:Key="SelectedIdsConverter" />
+        <converters:EditingItemTitleConverter x:Key="EditingItemTitleConverter" />
+        <converters:SaveButtonTextConverter x:Key="SaveButtonTextConverter" />
+    </Window.Resources>
+    <Grid Background="#F3F4F6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
+        <!--  Toolbar  -->
+        <Border Grid.Row="0"
+                Padding="16,12"
+                Background="White"
+                BorderBrush="#E5E7EB"
+                BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Margin="0,0,8,0"
+                        Padding="12,6"
+                        Command="{Binding AddItemCommand}"
+                        Content="+ 新しいアイテム" />
+                <Button Margin="0,0,8,0"
+                        Padding="12,6"
+                        Background="#DC2626"
+                        BorderThickness="0"
+                        Command="{Binding DeleteSelectedItemsCommand}"
+                        Foreground="White"
+                        IsEnabled="{Binding SelectedCount, Converter={StaticResource IntToBoolConverter}, Mode=OneWay}">
+                    <TextBlock>
+                        <Run Text="削除 (" />
+                        <Run Text="{Binding SelectedCount, Mode=OneWay}" />
+                        <Run Text=")" />
+                    </TextBlock>
+                </Button>
+                <Separator Margin="8,0" />
+                <Button Margin="8,0,8,0"
+                        Padding="12,6"
+                        Command="{Binding ExportDataCommand}"
+                        Content="エクスポート" />
+                <Button Margin="0,0,8,0"
+                        Padding="12,6"
+                        Command="{Binding ImportDataCommand}"
+                        Content="インポート" />
+                <Button Padding="12,6"
+                        Command="{Binding OpenDataFolderCommand}"
+                        Content="データフォルダを開く" />
+            </StackPanel>
+        </Border>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <!--  Filter Bar  -->
+        <Border Grid.Row="1"
+                Padding="16,12"
+                Background="#F9FAFB"
+                BorderBrush="#E5E7EB"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="200" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="SearchTextBox"
+                        Grid.Column="0"
+                        Margin="0,0,8,0"
+                        Padding="8,6"
+                        VerticalContentAlignment="Center"
+                        BorderBrush="#D1D5DB"
+                        BorderThickness="1"
+                        Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <ComboBox x:Name="StatusComboBox"
+                            Width="144"
+                            Margin="0,0,8,0"
+                            Padding="8,6"
+                            VerticalContentAlignment="Center"
+                            SelectionChanged="StatusComboBox_SelectionChanged">
+                        <ComboBoxItem Content="" />
+                        <ComboBoxItem Content="未着手" />
+                        <ComboBoxItem Content="進行中" />
+                        <ComboBoxItem Content="完了" />
+                    </ComboBox>
+                    <ComboBox x:Name="PriorityComboBox"
+                            Width="144"
+                            Margin="0,0,8,0"
+                            Padding="8,6"
+                            VerticalContentAlignment="Center"
+                            SelectionChanged="PriorityComboBox_SelectionChanged">
+                        <ComboBoxItem Content="" />
+                        <ComboBoxItem Content="低" />
+                        <ComboBoxItem Content="中" />
+                        <ComboBoxItem Content="高" />
+                    </ComboBox>
+                    <Button Margin="0,0,0,0"
+                            Padding="12,6"
+                            Command="{Binding ClearFiltersCommand}"
+                            Content="クリア"
+                            IsVisible="{Binding SearchText, Converter={StaticResource BoolToVisibilityConverter}}" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
+        <!--  DataGrid  -->
+        <DataGrid x:Name="TodoDataGrid"
+                Grid.Row="2"
+                AutoGenerateColumns="False"
+                Background="White"
+                BorderBrush="#E5E7EB"
+                BorderThickness="0,1,0,0"
+                GridLinesVisibility="Horizontal"
+                HeadersVisibility="Column"
+                ItemsSource="{Binding FilteredItems}"
+                DoubleTapped="DataGrid_DoubleTapped"
+                SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                SelectionMode="Extended"
+                MinHeight="200"
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Auto">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Width="100" MinWidth="100">
+                    <DataGridTemplateColumn.HeaderTemplate>
+                        <DataTemplate>
+                            <Border Padding="12,6,12,6"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <CheckBox HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        HorizontalContentAlignment="Center"
+                                        IsChecked="{Binding #TodoDataGrid.DataContext.AllFilteredSelected, Mode=TwoWay}" />
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.HeaderTemplate>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="models:TodoItem">
+                            <Border Padding="12,6,12,6"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <CheckBox HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        HorizontalContentAlignment="Center"
+                                        Command="{Binding #TodoDataGrid.DataContext.ToggleSelectionCommand}" CommandParameter="{Binding Id}">
+                                    <CheckBox.IsChecked>
+                                        <MultiBinding Converter="{StaticResource SelectedIdsConverter}" Mode="OneWay">
+                                            <Binding Path="#TodoDataGrid.DataContext.SelectedIds" />
+                                            <Binding Path="." />
+                                        </MultiBinding>
+                                    </CheckBox.IsChecked>
+                                </CheckBox>
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Width="80"
+                        Binding="{Binding Id}"
+                        Header="ID"
+                        IsReadOnly="True" />
+                <DataGridTextColumn Width="200"
+                        Binding="{Binding Title}"
+                        Header="タイトル"
+                        IsReadOnly="True" />
+                <DataGridTextColumn Width="300"
+                        Binding="{Binding Description}"
+                        Header="説明"
+                        IsReadOnly="True" />
+                <DataGridTextColumn Width="120"
+                        Binding="{Binding Status}"
+                        Header="ステータス"
+                        IsReadOnly="True" />
+                <DataGridTextColumn Width="100"
+                        Binding="{Binding Priority}"
+                        Header="優先度"
+                        IsReadOnly="True" />
+                <DataGridTextColumn Width="120"
+                        Header="期限"
+                        IsReadOnly="True">
+                    <DataGridTextColumn.Binding>
+                        <Binding Converter="{StaticResource DateTimeToStringConverter}"
+                                ConverterParameter="yyyy-MM-dd"
+                                Mode="OneWay"
+                                Path="DueDate">
+                            <Binding.FallbackValue>-</Binding.FallbackValue>
+                        </Binding>
+                    </DataGridTextColumn.Binding>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="160"
+                        Header="作成日時"
+                        IsReadOnly="True">
+                    <DataGridTextColumn.Binding>
+                        <Binding Converter="{StaticResource DateTimeToStringConverter}"
+                                ConverterParameter="yyyy-MM-dd HH:mm"
+                                Mode="OneWay"
+                                Path="CreatedAt" />
+                    </DataGridTextColumn.Binding>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="160"
+                        Header="更新日時"
+                        IsReadOnly="True">
+                    <DataGridTextColumn.Binding>
+                        <Binding Converter="{StaticResource DateTimeToStringConverter}"
+                                ConverterParameter="yyyy-MM-dd HH:mm"
+                                Mode="OneWay"
+                                Path="UpdatedAt" />
+                    </DataGridTextColumn.Binding>
+                </DataGridTextColumn>
+                <DataGridTemplateColumn Width="100" Header="操作">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="models:TodoItem">
+                            <Button Padding="8,4"
+                                    Command="{Binding #TodoDataGrid.DataContext.EditItemCommand}"
+                                    CommandParameter="{Binding}"
+                                    Content="編集" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!--  Dialog  -->
+        <Border Grid.Row="0"
+                Grid.RowSpan="3"
+                ZIndex="1000"
+                Background="#80000000"
+                IsVisible="{Binding IsDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Width="500"
+                    MaxHeight="600"
+                    Padding="24"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="White"
+                    BorderBrush="#E5E7EB"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0"
+                            Margin="0,0,0,16"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Text="{Binding EditingItem, Converter={StaticResource EditingItemTitleConverter}}" />
+                    <ScrollViewer Grid.Row="1"
+                            MaxHeight="400"
+                            >
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,4"
+                                    FontWeight="SemiBold"
+                                    Text="タイトル *" />
+                            <TextBox Margin="0,0,0,16"
+                                    Padding="8,6"
+                                    BorderBrush="#D1D5DB"
+                                    BorderThickness="1"
+                                    MaxLength="200"
+                                    Text="{Binding EditingItem.Title, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" />
+                            <TextBlock Margin="0,0,0,4"
+                                    FontWeight="SemiBold"
+                                    Text="説明" />
+                            <TextBox MinHeight="60"
+                                    Margin="0,0,0,16"
+                                    Padding="8,6"
+                                    AcceptsReturn="True"
+                                    BorderBrush="#D1D5DB"
+                                    BorderThickness="1"
+                                    MaxLength="500"
+                                    Text="{Binding EditingItem.Description, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
+                                    TextWrapping="Wrap" />
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                    <TextBlock Margin="0,0,0,4"
+                                            FontWeight="SemiBold"
+                                            Text="ステータス" />
+                                    <ComboBox Padding="8,6"
+                                            BorderBrush="#D1D5DB"
+                                            BorderThickness="1"
+                                            ItemsSource="{Binding StatusOptions}"
+                                            SelectedItem="{Binding EditingItem.Status}">
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Margin="0,0,0,4"
+                                            FontWeight="SemiBold"
+                                            Text="優先度" />
+                                    <ComboBox Padding="8,6"
+                                            BorderBrush="#D1D5DB"
+                                            BorderThickness="1"
+                                            ItemsSource="{Binding PriorityOptions}"
+                                            SelectedItem="{Binding EditingItem.Priority}">
+                                    </ComboBox>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Margin="0,0,0,4"
+                                    FontWeight="SemiBold"
+                                    Text="期限" />
+                            <DatePicker Margin="0,0,0,16"
+                                    Padding="8,6"
+                                    SelectedDate="{Binding EditingItem.DueDate, Converter={StaticResource DateTimeToDateTimeOffsetConverter}, TargetNullValue={x:Null}}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                    <StackPanel Grid.Row="2"
+                            Margin="0,16,0,0"
+                            HorizontalAlignment="Right"
+                            Orientation="Horizontal">
+                        <Button Margin="0,0,8,0"
+                                Padding="12,6"
+                                Command="{Binding CancelEditCommand}"
+                                Content="キャンセル" />
+                        <Button Padding="12,6"
+                                Background="#2563EB"
+                                BorderThickness="0"
+                                Command="{Binding SaveItemCommand}"
+                                Foreground="White">
+                            <TextBlock Text="{Binding EditingItem, Converter={StaticResource SaveButtonTextConverter}}" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Border>
+    </Grid>
 </Window>
