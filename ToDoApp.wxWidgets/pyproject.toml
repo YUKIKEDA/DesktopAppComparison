@@ -8,5 +8,10 @@ dependencies = [
     "wxpython>=4.2.4",
 ]
 
+[project.optional-dependencies]
+build = [
+    "nuitka>=2.8.9",
+]
+
 [project.scripts]
 todoapp = "main:main"
