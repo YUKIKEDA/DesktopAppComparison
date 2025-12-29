@@ -17,7 +17,6 @@
 10. WPF
 11. wxWidgets (wxPython)
 12. WinUI3
-13. Win32
 
 ### 機能要件
 
