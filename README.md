@@ -15,7 +15,7 @@
 8. Tauri
 9. WinForms
 10. WPF
-11. wxWidgets
+11. wxWidgets (wxPython)
 12. WinUI3
 13. Visual C++
 
