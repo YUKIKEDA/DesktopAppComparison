@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="ToDoApp.WinUI.Views.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:converters="using:ToDoApp.WinUI.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:ToDoApp.WinUI.Models"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:DateTimeToStringConverter x:Key="DateTimeToStringConverter" />
+        <converters:NullableDateTimeToStringConverter x:Key="NullableDateTimeToStringConverter" />
+        <converters:NullableDateTimeOffsetConverter x:Key="NullableDateTimeOffsetConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
+    </UserControl.Resources>
+
+    <Grid KeyDown="Grid_KeyDown" Loaded="Grid_Loaded" DataContext="{x:Bind ViewModel}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!--  Toolbar  -->
+        <Border
+            Grid.Row="0"
+            Padding="16,12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                    Click="AddButton_Click"
+                    Content="+ 新しいアイテム"
+                    Style="{ThemeResource AccentButtonStyle}" />
+                <Button
+                    Click="DeleteButton_Click"
+                    IsEnabled="{x:Bind ViewModel.SelectedIds.Count, Mode=OneWay, Converter={StaticResource IntToBoolConverter}}"
+                    Style="{ThemeResource DefaultButtonStyle}">
+                    <Button.Content>
+                        <TextBlock>
+                            <Run Text="削除 (" />
+                            <Run Text="{x:Bind ViewModel.SelectedIds.Count, Mode=OneWay}" />
+                            <Run Text=")" />
+                        </TextBlock>
+                    </Button.Content>
+                </Button>
+                <Border
+                    Width="1"
+                    Margin="8,0"
+                    Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Button
+                    Command="{x:Bind ViewModel.ExportDataCommand}"
+                    Content="エクスポート"
+                    Style="{ThemeResource DefaultButtonStyle}" />
+                <Button
+                    Command="{x:Bind ViewModel.ImportDataCommand}"
+                    Content="インポート"
+                    Style="{ThemeResource DefaultButtonStyle}" />
+                <Button
+                    Command="{x:Bind ViewModel.OpenDataFolderCommand}"
+                    Content="データフォルダを開く"
+                    Style="{ThemeResource DefaultButtonStyle}" />
+            </StackPanel>
+        </Border>
+
+        <!--  Filter Bar  -->
+        <Border
+            Grid.Row="1"
+            Padding="16,12"
+            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox
+                    x:Name="SearchTextBox"
+                    Width="300"
+                    HorizontalAlignment="Left"
+                    PlaceholderText="タイトル・説明で検索..."
+                    Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <ComboBox
+                    x:Name="StatusComboBox"
+                    Width="150"
+                    PlaceholderText="すべてのステータス"
+                    SelectedItem="{x:Bind ViewModel.StatusFilter, Mode=TwoWay}">
+                    <x:String>未着手</x:String>
+                    <x:String>進行中</x:String>
+                    <x:String>完了</x:String>
+                </ComboBox>
+                <ComboBox
+                    x:Name="PriorityComboBox"
+                    Width="150"
+                    PlaceholderText="すべての優先度"
+                    SelectedItem="{x:Bind ViewModel.PriorityFilter, Mode=TwoWay}">
+                    <x:String>低</x:String>
+                    <x:String>中</x:String>
+                    <x:String>高</x:String>
+                </ComboBox>
+                <Button
+                    Click="ClearFilters_Click"
+                    Content="クリア"
+                    Style="{ThemeResource DefaultButtonStyle}"
+                    Visibility="{x:Bind ViewModel.HasActiveFilters, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </StackPanel>
+        </Border>
+
+        <!--  DataGrid  -->
+        <Grid Grid.Row="2" Margin="16">
+            <controls:DataGrid
+                x:Name="TodoDataGrid"
+                AutoGenerateColumns="False"
+                CanUserReorderColumns="True"
+                CanUserResizeColumns="True"
+                CanUserSortColumns="True"
+                DoubleTapped="TodoDataGrid_DoubleTapped"
+                GridLinesVisibility="All"
+                HeadersVisibility="Column"
+                IsReadOnly="True"
+                ItemsSource="{Binding FilteredItems, Mode=OneWay}"
+                SelectionChanged="TodoDataGrid_SelectionChanged"
+                SelectionMode="Extended">
+                <controls:DataGrid.Columns>
+                    <controls:DataGridTemplateColumn Width="50" Header="選択">
+                        <controls:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:TodoItem">
+                                <CheckBox
+                                    Checked="CheckBox_Checked"
+                                    Loaded="CheckBox_Loaded"
+                                    Tag="{x:Bind}"
+                                    Unchecked="CheckBox_Unchecked" />
+                            </DataTemplate>
+                        </controls:DataGridTemplateColumn.CellTemplate>
+                    </controls:DataGridTemplateColumn>
+                    <controls:DataGridTextColumn
+                        Width="80"
+                        Binding="{Binding Id}"
+                        Header="ID" />
+                    <controls:DataGridTextColumn
+                        Width="200"
+                        Binding="{Binding Title}"
+                        Header="タイトル" />
+                    <controls:DataGridTextColumn
+                        Width="300"
+                        Binding="{Binding Description}"
+                        Header="説明" />
+                    <controls:DataGridTextColumn
+                        Width="120"
+                        Binding="{Binding Status}"
+                        Header="ステータス" />
+                    <controls:DataGridTextColumn
+                        Width="100"
+                        Binding="{Binding Priority}"
+                        Header="優先度" />
+                    <controls:DataGridTextColumn
+                        Width="120"
+                        Binding="{Binding DueDate, Converter={StaticResource NullableDateTimeToStringConverter}}"
+                        Header="期限" />
+                    <controls:DataGridTextColumn
+                        Width="160"
+                        Binding="{Binding CreatedAt, Converter={StaticResource DateTimeToStringConverter}}"
+                        Header="作成日時" />
+                    <controls:DataGridTextColumn
+                        Width="160"
+                        Binding="{Binding UpdatedAt, Converter={StaticResource DateTimeToStringConverter}}"
+                        Header="更新日時" />
+                    <controls:DataGridTemplateColumn Width="100" Header="操作">
+                        <controls:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:TodoItem">
+                                <Button
+                                    Click="EditButton_Click"
+                                    Content="編集"
+                                    Style="{ThemeResource DefaultButtonStyle}"
+                                    Tag="{x:Bind}" />
+                            </DataTemplate>
+                        </controls:DataGridTemplateColumn.CellTemplate>
+                    </controls:DataGridTemplateColumn>
+                </controls:DataGrid.Columns>
+            </controls:DataGrid>
+        </Grid>
+
+        <!--  Dialog for Add/Edit  -->
+        <ContentDialog
+            x:Name="TodoDialog"
+            Title="{x:Bind ViewModel.DialogTitle, Mode=OneWay}"
+            PrimaryButtonClick="TodoDialog_PrimaryButtonClick"
+            PrimaryButtonText="保存"
+            SecondaryButtonClick="TodoDialog_SecondaryButtonClick"
+            SecondaryButtonText="キャンセル"
+            XamlRoot="{x:Bind XamlRoot, Mode=OneWay}">
+            <StackPanel MinWidth="400" Spacing="16">
+                <TextBox
+                    x:Name="TitleTextBox"
+                    PlaceholderText="タイトル *"
+                    Text="{x:Bind ViewModel.EditingItemTitle, Mode=TwoWay}" />
+                <TextBox
+                    x:Name="DescriptionTextBox"
+                    MaxHeight="100"
+                    AcceptsReturn="True"
+                    PlaceholderText="説明"
+                    ScrollViewer.VerticalScrollMode="Auto"
+                    Text="{x:Bind ViewModel.EditingItemDescription, Mode=TwoWay}"
+                    TextWrapping="Wrap" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="ステータス" />
+                        <ComboBox x:Name="StatusComboBoxDialog" SelectedItem="{x:Bind ViewModel.EditingItemStatus, Mode=TwoWay}">
+                            <x:String>未着手</x:String>
+                            <x:String>進行中</x:String>
+                            <x:String>完了</x:String>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Text="優先度" />
+                        <ComboBox x:Name="PriorityComboBoxDialog" SelectedItem="{x:Bind ViewModel.EditingItemPriority, Mode=TwoWay}">
+                            <x:String>低</x:String>
+                            <x:String>中</x:String>
+                            <x:String>高</x:String>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="期限" />
+                    <DatePicker x:Name="DueDatePicker" Date="{Binding EditingItemDueDate, Mode=TwoWay}" />
+                </StackPanel>
+            </StackPanel>
+        </ContentDialog>
+    </Grid>
+</UserControl>
+
