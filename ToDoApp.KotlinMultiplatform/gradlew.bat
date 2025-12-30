@@ -17,7 +17,7 @@
 @rem
 
 @rem Set JAVA_HOME to the Android Studio JBR
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
 
 @if "%DEBUG%"=="" @echo off
 @rem ##########################################################################
