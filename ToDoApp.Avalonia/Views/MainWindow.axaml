@@ -57,6 +57,11 @@
                         <Run Text=")" />
                     </TextBlock>
                 </Button>
+                <Button Margin="0,0,8,4"
+                        Padding="12,6"
+                        Command="{Binding CopySelectedCommand}"
+                        Content="コピー"
+                        IsEnabled="{Binding SelectedCount, Converter={StaticResource IntToBoolConverter}, Mode=OneWay}" />
                 <Separator Margin="8,0,8,4" />
                 <Button Margin="0,0,8,4"
                         Padding="12,6"

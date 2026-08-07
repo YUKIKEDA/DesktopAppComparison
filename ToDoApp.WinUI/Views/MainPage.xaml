@@ -63,6 +63,11 @@
                     </Button.Content>
                 </Button>
                 <Button
+                    Command="{x:Bind ViewModel.CopySelectedCommand}"
+                    Content="コピー"
+                    IsEnabled="{x:Bind ViewModel.CanCopySelected, Mode=OneWay}"
+                    Style="{ThemeResource DefaultButtonStyle}" />
+                <Button
                     Click="OpenInNewWindowButton_Click"
                     Content="別ウィンドウで開く"
                     IsEnabled="{x:Bind ViewModel.CanOpenInNewWindow, Mode=OneWay}"

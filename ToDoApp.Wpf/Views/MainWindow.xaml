@@ -76,6 +76,12 @@
                 <Button
                     Margin="0,0,8,4"
                     Padding="12,6"
+                    Command="{Binding CopySelectedCommand}"
+                    Content="コピー"
+                    IsEnabled="{Binding SelectedCount, Converter={StaticResource IntToBoolConverter}, Mode=OneWay}" />
+                <Button
+                    Margin="0,0,8,4"
+                    Padding="12,6"
                     Command="{Binding OpenInNewWindowCommand}"
                     Content="別ウィンドウで開く" />
                 <Separator Margin="8,0,8,4" Height="20" />

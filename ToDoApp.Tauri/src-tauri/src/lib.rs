@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
-use tauri::{Manager, LogicalPosition, LogicalSize};
+use tauri::{Emitter, Manager, LogicalPosition, LogicalSize};
 
 // Get data directory path
 fn get_data_dir(app: &tauri::AppHandle) -> PathBuf {
@@ -25,6 +25,11 @@ async fn get_app_data_dir(app: tauri::AppHandle) -> Result<String, String> {
     Ok(data_dir.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 fn restore_window_bounds(app: &tauri::AppHandle) {
     let window_file = get_data_dir(app).join("window.json");
     let Ok(content) = fs::read_to_string(&window_file) else {
@@ -41,6 +46,22 @@ fn restore_window_bounds(app: &tauri::AppHandle) {
         bounds.width.max(800.0),
         bounds.height.max(600.0),
     ));
+}
+
+fn collect_json_paths_from_args() -> Vec<String> {
+    std::env::args()
+        .skip(1)
+        .filter(|arg| {
+            let lower = arg.to_lowercase();
+            lower.ends_with(".json") && !lower.contains("package.json") && !arg.starts_with('-')
+        })
+        .collect()
+}
+
+fn emit_open_files(app: &tauri::AppHandle, paths: Vec<String>) {
+    for path in paths {
+        let _ = app.emit("open-file", path);
+    }
 }
 
 /// Best-effort real window opacity on Windows via Win32 layered attributes.
@@ -98,14 +119,50 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_app_data_dir, set_window_opacity])
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .invoke_handler(tauri::generate_handler![
+            get_app_data_dir,
+            set_window_opacity,
+            quit_app
+        ])
         .setup(|app| {
             let _ = fs::create_dir_all(get_data_dir(app.handle()));
             restore_window_bounds(app.handle());
             // Apply ~0.95 opacity on Windows when possible
             let _ = set_window_opacity(app.handle().clone(), 0.95);
+
+            let json_paths = collect_json_paths_from_args();
+            if !json_paths.is_empty() {
+                let handle = app.handle().clone();
+                // Defer so the frontend listeners are ready
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(800));
+                    emit_open_files(&handle, json_paths);
+                });
+            }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                let paths: Vec<String> = urls
+                    .iter()
+                    .filter_map(|url| url.to_file_path().ok())
+                    .filter(|p| {
+                        p.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.eq_ignore_ascii_case("json"))
+                            .unwrap_or(false)
+                    })
+                    .map(|p| p.to_string_lossy().to_string())
+                    .collect();
+                if !paths.is_empty() {
+                    emit_open_files(app_handle, paths);
+                }
+            }
+            let _ = (app_handle, &event);
+        });
 }

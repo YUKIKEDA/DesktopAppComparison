@@ -7,6 +7,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.example.todoappkotlinmultiplatform.ui.components.*
 import com.example.todoappkotlinmultiplatform.ui.theme.AppThemeMode
@@ -33,9 +35,15 @@ fun App(
 
         var editingItem by remember { mutableStateOf<TodoItem?>(null) }
         var isDialogOpen by remember { mutableStateOf(false) }
+        val clipboardManager = LocalClipboardManager.current
 
         val filteredItems = remember(items, filters, sorts) {
             viewModel.getFilteredItems()
+        }
+
+        fun copySelected() {
+            val json = viewModel.copySelectedAsJson() ?: return
+            clipboardManager.setText(AnnotatedString(json))
         }
 
         Box(
@@ -55,7 +63,7 @@ fun App(
                                     true
                                 }
                                 (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.S -> {
-                                    viewModel.saveData()
+                                    viewModel.saveData(notify = true)
                                     true
                                 }
                                 (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.F -> {
@@ -85,6 +93,7 @@ fun App(
                             viewModel.deleteItems(selectedIds.toList())
                         }
                     },
+                    onCopyClick = { copySelected() },
                     onExportClick = {
                         viewModel.exportData()
                     },

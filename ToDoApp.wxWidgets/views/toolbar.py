@@ -1,8 +1,10 @@
 """Toolbar component."""
+import json
 import wx
 
 from controllers.todo_controller import TodoController
 from utils.theme import ThemeColors, style_brand_button
+from utils.platform_integration import copy_text_to_clipboard, show_notification
 
 
 class Toolbar(wx.Panel):
@@ -36,6 +38,10 @@ class Toolbar(wx.Panel):
         self.delete_btn.Enable(False)
         sizer.Add(self.delete_btn, flag=wx.ALL, border=5)
 
+        self.copy_btn = wx.Button(self, label="コピー")
+        self.copy_btn.Enable(False)
+        sizer.Add(self.copy_btn, flag=wx.ALL, border=5)
+
         self.open_window_btn = wx.Button(self, label="別ウィンドウで開く")
         self.open_window_btn.Enable(False)
         sizer.Add(self.open_window_btn, flag=wx.ALL, border=5)
@@ -58,6 +64,7 @@ class Toolbar(wx.Panel):
         """Bind events."""
         self.add_btn.Bind(wx.EVT_BUTTON, self._on_add)
         self.delete_btn.Bind(wx.EVT_BUTTON, self._on_delete)
+        self.copy_btn.Bind(wx.EVT_BUTTON, self._on_copy)
         self.open_window_btn.Bind(wx.EVT_BUTTON, self._on_open_window)
         self.export_btn.Bind(wx.EVT_BUTTON, self._on_export)
         self.import_btn.Bind(wx.EVT_BUTTON, self._on_import)
@@ -72,6 +79,7 @@ class Toolbar(wx.Panel):
         style_brand_button(self.add_btn, colors.brand_blue, colors.on_brand)
         style_brand_button(self.delete_btn, colors.brand_red, colors.on_brand)
         for btn in (
+            self.copy_btn,
             self.open_window_btn,
             self.export_btn,
             self.import_btn,
@@ -109,6 +117,24 @@ class Toolbar(wx.Panel):
 
         dlg.Destroy()
 
+    def _on_copy(self, event: wx.CommandEvent) -> None:
+        """Copy selected items as JSON to clipboard."""
+        selected_ids = self.controller.get_selected_ids()
+        if not selected_ids:
+            return
+        items = [
+            item.to_dict()
+            for item in self.controller.get_items()
+            if item.id in selected_ids
+        ]
+        text = json.dumps(items, ensure_ascii=False, indent=2)
+        if copy_text_to_clipboard(text):
+            frame = self.GetTopLevelParent()
+            if frame and hasattr(frame, "SetStatusText"):
+                frame.SetStatusText(f"{len(items)}件をクリップボードにコピーしました")
+        else:
+            wx.MessageBox("クリップボードへのコピーに失敗しました", "エラー", wx.OK | wx.ICON_ERROR)
+
     def _on_open_window(self, event: wx.CommandEvent) -> None:
         """Handle open-in-new-window button click."""
         if self._on_open_in_new_window:
@@ -123,6 +149,10 @@ class Toolbar(wx.Panel):
         try:
             if self.controller.import_data(self):
                 self.controller.save_data()
+                show_notification("Todo App", "インポートしました", self)
+                frame = self.GetTopLevelParent()
+                if frame and hasattr(frame, "SetStatusText"):
+                    frame.SetStatusText("インポートしました")
         except Exception as e:
             wx.MessageBox(
                 f"インポートに失敗しました: {e}",
@@ -143,4 +173,5 @@ class Toolbar(wx.Panel):
         """Update selection count display."""
         self.delete_btn.SetLabel(f"削除 ({count})")
         self.delete_btn.Enable(count > 0)
+        self.copy_btn.Enable(count > 0)
         self.open_window_btn.Enable(count == 1)

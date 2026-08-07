@@ -15,6 +15,7 @@ fun Toolbar(
     isDarkTheme: Boolean,
     onAddClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onCopyClick: () -> Unit,
     onExportClick: () -> Unit,
     onImportClick: () -> Unit,
     onOpenDataFolderClick: () -> Unit,
@@ -56,6 +57,13 @@ fun Toolbar(
                 ) {
                     Text("別ウィンドウで開く")
                 }
+            }
+
+            OutlinedButton(
+                onClick = onCopyClick,
+                enabled = selectedCount > 0
+            ) {
+                Text("コピー")
             }
 
             OutlinedButton(onClick = onExportClick) {

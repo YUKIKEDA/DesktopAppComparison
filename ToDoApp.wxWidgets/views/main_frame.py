@@ -11,6 +11,7 @@ from views.todo_form_dialog import TodoFormDialog
 from views.detail_frame import TodoDetailFrame
 from models.todo_item import TodoItem
 from utils.theme import get_theme
+from utils.platform_integration import TodoTaskBarIcon, show_notification
 
 
 class JsonFileDropTarget(wx.FileDropTarget):
@@ -29,7 +30,7 @@ class JsonFileDropTarget(wx.FileDropTarget):
 
 class MainFrame(wx.Frame):
     """Main application frame."""
-    def __init__(self):
+    def __init__(self, startup_json_paths=None):
         print("MainFrame.__init__: Starting...")
         try:
             print("MainFrame.__init__: Creating frame...")
@@ -40,6 +41,10 @@ class MainFrame(wx.Frame):
                 style=wx.DEFAULT_FRAME_STYLE
             )
             print("MainFrame.__init__: Frame created")
+
+            self._allow_close = False
+            self._tray_icon = None
+            self._startup_json_paths = list(startup_json_paths or [])
 
             print("MainFrame.__init__: Creating controller...")
             self.controller = TodoController()
@@ -78,6 +83,10 @@ class MainFrame(wx.Frame):
             self.SetDropTarget(JsonFileDropTarget(self._on_drop_json))
             print("MainFrame.__init__: Drag and drop set up")
 
+            print("MainFrame.__init__: Setting up system tray...")
+            self._tray_icon = TodoTaskBarIcon(self)
+            print("MainFrame.__init__: System tray set up")
+
             print("MainFrame.__init__: Loading data...")
             self._load_data()
             print("MainFrame.__init__: Data loaded")
@@ -86,6 +95,9 @@ class MainFrame(wx.Frame):
             # Setup accelerators for keyboard shortcuts
             self._setup_accelerators()
             print("MainFrame.__init__: Accelerators set up")
+
+            if self._startup_json_paths:
+                wx.CallAfter(self._import_startup_paths)
 
             print("MainFrame.__init__: Initialization complete")
         except Exception as e:
@@ -99,9 +111,24 @@ class MainFrame(wx.Frame):
                     "エラー",
                     wx.OK | wx.ICON_ERROR
                 )
-            except:
+            except Exception:
                 pass
             raise
+
+    def _import_startup_paths(self) -> None:
+        """Import .json paths from argv after UI is ready."""
+        for path in self._startup_json_paths:
+            try:
+                if self.controller.import_from_path(path, parent=self):
+                    self.controller.save_data()
+                    show_notification("Todo App", "インポートしました", self)
+                    self.SetStatusText(f"起動引数からインポートしました: {path}")
+            except Exception as e:
+                wx.MessageBox(
+                    f"インポートに失敗しました: {e}",
+                    "エラー",
+                    wx.OK | wx.ICON_ERROR
+                )
 
     def _create_ui(self) -> None:
         """Create main UI."""
@@ -416,6 +443,7 @@ class MainFrame(wx.Frame):
         try:
             if self.controller.import_from_path(path, parent=self):
                 self.controller.save_data()
+                show_notification("Todo App", "インポートしました", self)
                 self.SetStatusText(f"インポートしました: {path}")
         except Exception as e:
             wx.MessageBox(
@@ -435,6 +463,7 @@ class MainFrame(wx.Frame):
     def _on_save(self, event: wx.Event) -> None:
         """Handle save (Ctrl+S)."""
         self.controller.save_data()
+        show_notification("Todo App", "保存しました", self)
         self.SetStatusText("保存しました")
 
     def _on_focus_search(self, event: wx.Event) -> None:
@@ -447,12 +476,8 @@ class MainFrame(wx.Frame):
         if selected_ids:
             self.toolbar._on_delete(wx.CommandEvent())
 
-    def _on_close(self, event: wx.CloseEvent) -> None:
-        """Handle window close."""
-        # Stop auto-save timer
-        self._auto_save_timer.Stop()
-
-        # Persist window geometry
+    def _persist_and_save(self) -> None:
+        """Persist window geometry and todo data."""
         try:
             size = self.GetSize()
             pos = self.GetPosition()
@@ -460,18 +485,36 @@ class MainFrame(wx.Frame):
         except Exception as e:
             wx.LogError(f"Save window geometry failed: {e}")
 
-        # Save on close
         try:
             self.controller.save_data()
         except Exception as e:
             wx.LogError(f"Save on close failed: {e}")
 
-        # Close detail frames
+    def _on_close(self, event: wx.CloseEvent) -> None:
+        """Handle window close — hide to tray unless quitting."""
+        if not self._allow_close:
+            self._persist_and_save()
+            self.Hide()
+            event.Veto()
+            return
+
+        # Real quit from tray
+        self._auto_save_timer.Stop()
+        self._persist_and_save()
+
         for frame in list(self._detail_frames.values()):
             try:
                 frame.Destroy()
             except Exception:
                 pass
         self._detail_frames.clear()
+
+        if self._tray_icon:
+            try:
+                self._tray_icon.RemoveIcon()
+                self._tray_icon.Destroy()
+            except Exception:
+                pass
+            self._tray_icon = None
 
         event.Skip()

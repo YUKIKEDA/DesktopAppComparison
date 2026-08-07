@@ -1,4 +1,15 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, screen } from "electron";
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  shell,
+  screen,
+  Tray,
+  Menu,
+  Notification,
+  nativeImage,
+} from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -40,6 +51,9 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
+const pendingOpenFiles: string[] = [];
 
 function parseProjectData(content: string): ProjectData {
   const data = JSON.parse(content);
@@ -147,6 +161,90 @@ function parseThemeData(content: string): ThemeData {
     return { theme: data.theme };
   }
   return { theme: "light" };
+}
+
+function findJsonFromArgv(argv: string[]): string | null {
+  for (const arg of argv) {
+    if (!arg || arg.startsWith("-")) continue;
+    const lower = arg.toLowerCase();
+    if (lower.endsWith(".json") && !lower.includes("package.json")) {
+      return arg;
+    }
+  }
+  return null;
+}
+
+function persistMainWindowBounds() {
+  if (!win || win.isDestroyed()) return;
+  const bounds = win.getBounds();
+  void saveWindowBounds({
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+  });
+}
+
+function showMainWindow() {
+  if (!win || win.isDestroyed()) {
+    void createWindow();
+    return;
+  }
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+function sendOpenFile(filePath: string) {
+  if (win && !win.isDestroyed() && !win.webContents.isLoading()) {
+    win.webContents.send("app:open-file", filePath);
+  } else {
+    pendingOpenFiles.push(filePath);
+  }
+}
+
+function flushPendingOpenFiles() {
+  if (!win || win.isDestroyed()) return;
+  while (pendingOpenFiles.length > 0) {
+    const filePath = pendingOpenFiles.shift();
+    if (filePath) {
+      win.webContents.send("app:open-file", filePath);
+    }
+  }
+}
+
+function getTrayIcon() {
+  const pngPath = path.join(process.env.VITE_PUBLIC!, "icon.png");
+  const icoPath = path.join(process.env.VITE_PUBLIC!, "icon.ico");
+  const png = nativeImage.createFromPath(pngPath);
+  if (!png.isEmpty()) return png;
+  const ico = nativeImage.createFromPath(icoPath);
+  if (!ico.isEmpty()) return ico;
+  return nativeImage.createEmpty();
+}
+
+function createTray() {
+  if (tray) return;
+  tray = new Tray(getTrayIcon());
+  tray.setToolTip("Todo App");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: "表示",
+        click: () => showMainWindow(),
+      },
+      {
+        label: "終了",
+        click: () => {
+          isQuitting = true;
+          persistMainWindowBounds();
+          app.quit();
+        },
+      },
+    ])
+  );
+  tray.on("click", () => showMainWindow());
+  tray.on("double-click", () => showMainWindow());
 }
 
 function createDetailWindow(itemId: number) {
@@ -305,6 +403,18 @@ async function setupIpcHandlers() {
       }
     }
   );
+
+  // OS notification
+  ipcMain.handle(
+    "app:notify",
+    async (_event, payload: { title: string; body: string }): Promise<void> => {
+      if (!Notification.isSupported()) return;
+      new Notification({
+        title: payload?.title || "Todo App",
+        body: payload?.body || "",
+      }).show();
+    }
+  );
 }
 
 async function createWindow() {
@@ -334,39 +444,74 @@ async function createWindow() {
 
   win = new BrowserWindow(options);
 
-  win.on("close", () => {
+  win.on("close", (event) => {
     if (!win) return;
-    const bounds = win.getBounds();
-    void saveWindowBounds({
-      x: bounds.x,
-      y: bounds.y,
-      width: bounds.width,
-      height: bounds.height,
-    });
+    persistMainWindowBounds();
+    if (!isQuitting) {
+      event.preventDefault();
+      win.hide();
+    }
+  });
+
+  win.webContents.on("did-finish-load", () => {
+    flushPendingOpenFiles();
   });
 
   loadRenderer(win);
 }
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    win = null;
-  }
-});
+// Single instance: focus existing window and forward .json path
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, commandLine) => {
+    showMainWindow();
+    const jsonPath = findJsonFromArgv(commandLine);
+    if (jsonPath) {
+      sendOpenFile(jsonPath);
+    }
+  });
 
-app.on("activate", () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
-    void createWindow();
-  }
-});
+  // macOS: open file via Finder / file association
+  app.on("open-file", (event, filePath) => {
+    event.preventDefault();
+    if (filePath.toLowerCase().endsWith(".json")) {
+      if (app.isReady()) {
+        sendOpenFile(filePath);
+      } else {
+        pendingOpenFiles.push(filePath);
+      }
+    }
+  });
 
-app.whenReady().then(() => {
-  setupIpcHandlers();
-  void createWindow();
-});
+  // Quit when all windows are closed, except on macOS / when hidden to tray
+  app.on("window-all-closed", () => {
+    if (isQuitting && process.platform !== "darwin") {
+      app.quit();
+      win = null;
+    }
+  });
+
+  app.on("before-quit", () => {
+    isQuitting = true;
+  });
+
+  app.on("activate", () => {
+    showMainWindow();
+  });
+
+  app.whenReady().then(() => {
+    if (process.platform === "win32") {
+      app.setAppUserModelId("com.yuuuu.todoapp-electron");
+    }
+    setupIpcHandlers();
+    createTray();
+    void createWindow().then(() => {
+      const jsonPath = findJsonFromArgv(process.argv);
+      if (jsonPath) {
+        sendOpenFile(jsonPath);
+      }
+    });
+  });
+}

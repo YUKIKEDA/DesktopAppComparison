@@ -72,9 +72,16 @@ namespace ToDoApp.WinUI.ViewModels
         {
             _dataService = dataService;
             _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
-            SelectedIds.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanOpenInNewWindow));
+            SelectedIds.CollectionChanged += (_, _) =>
+            {
+                OnPropertyChanged(nameof(CanOpenInNewWindow));
+                OnPropertyChanged(nameof(CanCopySelected));
+                CopySelectedCommand.NotifyCanExecuteChanged();
+            };
             _ = LoadDataAsync();
         }
+
+        public bool CanCopySelected => SelectedIds.Count > 0;
 
         public async Task LoadDataAsync()
         {
@@ -102,10 +109,10 @@ namespace ToDoApp.WinUI.ViewModels
         [RelayCommand]
         private async Task SaveDataAsync()
         {
-            await SaveDataInternalAsync();
+            await SaveDataInternalAsync(setLoading: true, notify: true);
         }
 
-        private async Task SaveDataInternalAsync(bool setLoading = true)
+        private async Task SaveDataInternalAsync(bool setLoading = true, bool notify = false)
         {
             System.Diagnostics.Debug.WriteLine($"[ViewModel] SaveDataInternalAsync called. Items count: {Items.Count}, setLoading: {setLoading}");
             
@@ -120,6 +127,10 @@ namespace ToDoApp.WinUI.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[ViewModel] Creating ProjectData with {data.Items.Count} items");
                 await _dataService.SaveDataAsync(data);
                 System.Diagnostics.Debug.WriteLine($"[ViewModel] Data saved successfully. Items count: {data.Items.Count}");
+                if (notify)
+                {
+                    NotificationService.Show("Todo App", "保存しました");
+                }
             }
             catch (Exception ex)
             {
@@ -191,7 +202,20 @@ namespace ToDoApp.WinUI.ViewModels
             }
             SelectedIds.Clear();
             ApplyFilters();
-            await SaveDataAsync();
+            await SaveDataInternalAsync(setLoading: true, notify: false);
+            NotificationService.Show("Todo App", "インポートしました");
+        }
+
+        [RelayCommand(CanExecute = nameof(CanCopySelected))]
+        private void CopySelected()
+        {
+            var selected = Items.Where(item => SelectedIds.Contains(item.Id)).ToList();
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
+            ClipboardService.CopyTodoItems(selected);
         }
 
         public void NotifyItemUpdated(TodoItem item)
@@ -426,7 +450,7 @@ namespace ToDoApp.WinUI.ViewModels
                     try
                     {
                         System.Diagnostics.Debug.WriteLine($"[ViewModel] Starting auto-save task");
-                        await SaveDataInternalAsync(setLoading: false);
+                        await SaveDataInternalAsync(setLoading: false, notify: false);
                         System.Diagnostics.Debug.WriteLine($"[ViewModel] Auto-save task completed");
                     }
                     catch (Exception ex)

@@ -19,7 +19,7 @@ def show_error(title: str, message: str):
         app = wx.App.Get()
         if app:
             wx.MessageBox(message, title, wx.OK | wx.ICON_ERROR)
-    except:
+    except Exception:
         pass
 
 
@@ -30,6 +30,15 @@ except Exception as e:
     sys.exit(1)
 
 
+def _json_paths_from_argv(argv):
+    """Return existing .json paths from argv (file association / open-with)."""
+    paths = []
+    for arg in argv[1:]:
+        if arg.lower().endswith(".json") and os.path.isfile(arg):
+            paths.append(os.path.abspath(arg))
+    return paths
+
+
 class TodoApp(wx.App):
     """Main application class."""
     def OnInit(self):
@@ -38,19 +47,18 @@ class TodoApp(wx.App):
         try:
             print("Setting app name...")
             self.SetAppName("TodoApp.wxWidgets")
-            
+
+            json_paths = _json_paths_from_argv(sys.argv)
             print("Creating main frame...")
-            # Create main frame
-            frame = MainFrame()
+            frame = MainFrame(startup_json_paths=json_paths)
             print("Main frame created successfully")
-            
+
             print("Showing frame...")
             frame.Show()
             print("Frame shown successfully")
-            
+
             return True
         except Exception as e:
-            # Show error dialog
             error_msg = f"アプリケーションの起動に失敗しました:\n\n{str(e)}\n\n{traceback.format_exc()}"
             print(error_msg, file=sys.stderr)
             show_error("致命的なエラー", error_msg)
@@ -65,7 +73,6 @@ def main():
         print("App created, starting main loop...")
         app.MainLoop()
     except Exception as e:
-        # Last resort error handling
         error_msg = f"アプリケーションの実行中にエラーが発生しました:\n\n{str(e)}\n\n{traceback.format_exc()}"
         print(error_msg, file=sys.stderr)
         show_error("実行時エラー", error_msg)
@@ -74,4 +81,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

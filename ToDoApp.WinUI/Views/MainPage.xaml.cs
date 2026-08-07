@@ -294,6 +294,14 @@ namespace ToDoApp.WinUI.Views
                     e.Handled = true;
                     ViewModel.SaveDataCommand.Execute(null);
                 }
+                else if (e.Key == Windows.System.VirtualKey.C)
+                {
+                    if (ViewModel.SelectedIds.Count > 0)
+                    {
+                        e.Handled = true;
+                        ViewModel.CopySelectedCommand.Execute(null);
+                    }
+                }
                 else if (e.Key == Windows.System.VirtualKey.F)
                 {
                     e.Handled = true;

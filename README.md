@@ -417,20 +417,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### プラットフォーム統合機能
 
-| Framework             | Notification | System tray | File association | Native dialog | Clipboard | Notes                        |
-| --------------------- | ------------ | ----------- | ---------------- | ------------- | --------- | ---------------------------- |
-| Avalonia              | N            | N           | N                | Y             | N         |                              |
-| Compose Multiplatform | N            | N           | N                | Y             | N         |                              |
-| Electron              | N            | N           | N                | Y             | N         |                              |
-| Flutter               | N            | N           | N                | Y             | N         |                              |
-| GPUI                  | -            | -           | -                | -             | -         | Excluded (no file picker)    |
-| MAUI                  | -            | -           | -                | -             | -         | Excluded (WinUI3 wrapper)    |
-| React Native          | -            | -           | -                | -             | -         | Excluded (insufficient info) |
-| Tauri                 | N            | N           | N                | Y             | N         |                              |
-| WinForms              | -            | -           | -                | -             | -         | Excluded (limited UI)        |
-| WPF                   | N            | N           | N                | Y             | N         |                              |
-| WinUI3                | N            | N           | N                | Y             | N         |                              |
-| wxWidgets             | N            | N           | N                | Y             | N         |                              |
+| Framework             | Notification | System tray | File association | Native dialog | Clipboard | Notes                                              |
+| --------------------- | ------------ | ----------- | ---------------- | ------------- | --------- | -------------------------------------------------- |
+| Avalonia              | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
+| Compose Multiplatform | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
+| Electron              | Y            | Y           | Y                | Y             | Y         | fileAssociations + open-file / second-instance     |
+| Flutter               | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
+| GPUI                  | -            | -           | -                | -             | -         | Excluded (no file picker)                          |
+| MAUI                  | -            | -           | -                | -             | -         | Excluded (WinUI3 wrapper)                          |
+| React Native          | -            | -           | -                | -             | -         | Excluded (insufficient info)                       |
+| Tauri                 | Y            | Y           | Y                | Y             | Y         | fileAssociations + CLI / open-file                 |
+| WinForms              | -            | -           | -                | -             | -         | Excluded (limited UI)                              |
+| WPF                   | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
+| WinUI3                | Y            | Y           | Y                | Y             | Y         | Package FileTypeAssociation; Win32 tray best-effort|
+| wxWidgets             | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -445,10 +445,11 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 **Notes**:
 - 各アプリ実装に基づく判定
-- Native dialog: import/export の OS ファイルピッカーを `Y`（全実装アプリで対応）
-- File association: JSON の DnD 取込はあるが、OS への拡張子関連付け登録ではないため `N`
-- Clipboard: テキスト欄の標準動作のみ。行コピー等の明示 API は未実装のため `N`
-- Notification / System tray: 未実装
+- Notification: 手動保存・インポート完了時の OS トースト／バルーン
+- System tray: 閉じるでトレイ退避、「表示」「終了」メニュー
+- Clipboard: ツールバー「コピー」で選択アイテムを JSON テキスト化
+- Native dialog: import/export の OS ファイルピッカー（従来どおり）
+- File association: Electron / Tauri / WinUI はパッケージ関連付け `Y`。他は起動引数の `.json` を ImportFromPath する `P`（インストーラ登録なし）
 
 #### パフォーマンス機能
 

@@ -3,6 +3,7 @@ import { useTodoStore } from "../store/useTodoStore";
 import { DataService } from "../lib/dataService";
 import { openDetailWindow } from "../lib/windowService";
 import { applyThemeClass } from "../lib/utils";
+import { copyText, showNotification } from "../lib/platform";
 import { useEffect, useCallback } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { emit } from "@tauri-apps/api/event";
@@ -20,14 +21,31 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
     onEditItem(null); // Trigger add dialog
   }, [onEditItem]);
 
-  const saveData = useCallback(async () => {
-    setLoading(true);
+  const saveData = useCallback(
+    async (opts?: { notify?: boolean }) => {
+      setLoading(true);
+      try {
+        await DataService.saveData({ items });
+        await emit("data-changed");
+        if (opts?.notify) {
+          await showNotification("Todo App", "保存しました");
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [items, setLoading]
+  );
+
+  const handleCopy = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    const selected = items.filter((item) => selectedIds.has(item.id));
     try {
-      await DataService.saveData({ items });
-    } finally {
-      setLoading(false);
+      await copyText(JSON.stringify(selected, null, 2));
+    } catch (error) {
+      console.error("Copy failed:", error);
     }
-  }, [items, setLoading]);
+  }, [items, selectedIds]);
 
   const handleDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -51,6 +69,7 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
     setLoading(true);
     try {
       await DataService.saveData({ items: updatedItems });
+      await emit("data-changed");
     } finally {
       setLoading(false);
     }
@@ -69,7 +88,9 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
       const data = await DataService.importData();
       if (data) {
         setItems(data.items);
-        await saveData();
+        await DataService.saveData({ items: data.items });
+        await emit("data-changed");
+        await showNotification("Todo App", "インポートしました");
       }
     } catch (error) {
       console.error("Import failed:", error);
@@ -114,7 +135,15 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
           handleAdd();
         } else if (e.key === "s") {
           e.preventDefault();
-          saveData();
+          void saveData({ notify: true });
+        } else if (e.key === "c" && selectedIds.size > 0) {
+          const target = e.target as HTMLElement | null;
+          const tag = target?.tagName?.toLowerCase();
+          if (tag === "input" || tag === "textarea" || target?.isContentEditable) {
+            return;
+          }
+          e.preventDefault();
+          void handleCopy();
         } else if (e.key === "f") {
           e.preventDefault();
           // Focus search input
@@ -131,7 +160,7 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedIds.size, handleAdd, saveData, handleDelete]);
+  }, [selectedIds.size, handleAdd, saveData, handleDelete, handleCopy]);
 
   return (
     <>
@@ -143,6 +172,13 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
           disabled={selectedIds.size === 0}
         >
           削除 ({selectedIds.size})
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => void handleCopy()}
+          disabled={selectedIds.size === 0}
+        >
+          コピー
         </Button>
         <Button
           variant="outline"

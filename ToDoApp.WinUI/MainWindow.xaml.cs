@@ -1,10 +1,12 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using ToDoApp.WinUI.Models;
 using ToDoApp.WinUI.Services;
+using ToDoApp.WinUI.Views;
 using Windows.Graphics;
 
 namespace ToDoApp.WinUI
@@ -21,6 +23,10 @@ namespace ToDoApp.WinUI
         private const int DefaultHeight = 900;
 
         private readonly DataService _dataService = new();
+        private TrayIconService? _trayIcon;
+        private bool _exitRequested;
+
+        public MainPage? MainPage => Content as MainPage;
 
         public MainWindow()
         {
@@ -35,11 +41,59 @@ namespace ToDoApp.WinUI
 
             RestoreWindowPosition();
             Closed += MainWindow_Closed;
+            AppWindow.Closing += AppWindow_Closing;
+
+            try
+            {
+                _trayIcon = new TrayIconService(this);
+                _trayIcon.ShowRequested += ShowFromTray;
+                _trayIcon.ExitRequestedEvent += ExitFromTray;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Tray icon setup failed: {ex.Message}");
+            }
+
+            NotificationService.EnsureRegistered();
+        }
+
+        public void ShowFromTray()
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                AppWindow.Show();
+                Activate();
+            });
+        }
+
+        private void ExitFromTray()
+        {
+            _exitRequested = true;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _trayIcon?.Dispose();
+                _trayIcon = null;
+                Close();
+            });
+        }
+
+        private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+        {
+            if (_exitRequested || (_trayIcon?.ExitRequested ?? false))
+            {
+                return;
+            }
+
+            args.Cancel = true;
+            SaveWindowPosition();
+            AppWindow.Hide();
         }
 
         private void MainWindow_Closed(object sender, WindowEventArgs args)
         {
             SaveWindowPosition();
+            _trayIcon?.Dispose();
+            _trayIcon = null;
         }
 
         private string GetWindowSettingsPath() =>

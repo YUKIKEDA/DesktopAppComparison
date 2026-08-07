@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:desktop_drop/desktop_drop.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import 'providers/todo_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/data_service.dart';
+import 'services/platform_integration.dart';
 import 'theme/app_theme.dart';
 import 'widgets/toolbar.dart';
 import 'widgets/filter_bar.dart';
@@ -20,14 +19,17 @@ import 'models/todo_item.dart';
 // Multi-window: Flutter desktop has no first-class multi-window API.
 // Skipped (desktop_multi_window is fragile); parent marks as FW limitation.
 
-bool get _isDesktop =>
-    !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+bool get _isDesktop => isDesktopPlatform;
 
-Future<void> main() async {
+List<String> _startupArgs = const [];
+
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  _startupArgs = args;
 
   if (_isDesktop) {
     await windowManager.ensureInitialized();
+    await PlatformIntegration.initNotifications();
 
     const defaultSize = Size(1280, 720);
     final saved = await DataService.loadWindowBounds();
@@ -96,6 +98,15 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
     if (_isDesktop) {
       windowManager.addListener(this);
       windowManager.setPreventClose(true);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await PlatformIntegration.initTray(
+          onShow: () => PlatformIntegration.showFromTray(),
+          onQuit: () async {
+            await _persistWindowBounds();
+            await PlatformIntegration.quitApp();
+          },
+        );
+      });
     }
     // 最初のフレームが構築された後にデータを読み込む
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -114,9 +125,14 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
 
   @override
   void onWindowClose() async {
+    if (PlatformIntegration.isQuitting) {
+      await _persistWindowBounds();
+      await windowManager.setPreventClose(false);
+      await windowManager.close();
+      return;
+    }
     await _persistWindowBounds();
-    await windowManager.setPreventClose(false);
-    await windowManager.close();
+    await PlatformIntegration.hideToTray();
   }
 
   Future<void> _persistWindowBounds() async {
@@ -139,6 +155,10 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
 
   Future<void> _loadData() async {
     await ref.read(todoProvider.notifier).loadData();
+    final paths = PlatformIntegration.jsonPathsFromArgs(_startupArgs);
+    for (final path in paths) {
+      await _importFromDroppedPath(path, fromArgv: true);
+    }
   }
 
   void _setupKeyboardShortcuts() {
@@ -192,7 +212,28 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
     });
   }
 
-  Future<void> _importFromDroppedPath(String path) async {
+  Future<void> _manualSave() async {
+    try {
+      await ref.read(todoProvider.notifier).saveData();
+      await PlatformIntegration.showNotification('保存しました');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('保存しました')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('保存に失敗しました: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _importFromDroppedPath(
+    String path, {
+    bool fromArgv = false,
+  }) async {
     try {
       final data = await DataService.importFromPath(path);
       if (data == null) {
@@ -206,9 +247,16 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
       final notifier = ref.read(todoProvider.notifier);
       notifier.setItems(data.items);
       await notifier.saveData();
+      await PlatformIntegration.showNotification('インポートしました');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('JSON をインポートしました')),
+          SnackBar(
+            content: Text(
+              fromArgv
+                  ? '起動引数の JSON をインポートしました'
+                  : 'JSON をインポートしました',
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -246,7 +294,7 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
           ),
           _SaveIntent: CallbackAction<_SaveIntent>(
             onInvoke: (_) {
-              ref.read(todoProvider.notifier).saveData();
+              _manualSave();
               return null;
             },
           ),
@@ -283,7 +331,11 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
                 children: [
                   Column(
                     children: [
-                      Toolbar(onEditItem: _handleEditItem),
+                      Toolbar(
+                        onEditItem: _handleEditItem,
+                        onImportSuccess: () => PlatformIntegration
+                            .showNotification('インポートしました'),
+                      ),
                       const FilterBar(),
                       Expanded(
                         child: TodoTable(

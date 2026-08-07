@@ -3,16 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/todo_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/data_service.dart';
+import '../services/platform_integration.dart';
 import '../models/todo_item.dart';
 import '../models/project_data.dart';
 import '../theme/app_theme.dart';
 
 class Toolbar extends ConsumerStatefulWidget {
   final Function(TodoItem?) onEditItem;
+  final Future<void> Function()? onImportSuccess;
 
   const Toolbar({
     super.key,
     required this.onEditItem,
+    this.onImportSuccess,
   });
 
   @override
@@ -54,6 +57,28 @@ class _ToolbarState extends ConsumerState<Toolbar> {
     }
   }
 
+  Future<void> _handleCopy() async {
+    final state = ref.read(todoProvider);
+    if (state.selectedIds.isEmpty) return;
+    final selected = state.items
+        .where((item) => state.selectedIds.contains(item.id))
+        .toList();
+    try {
+      await PlatformIntegration.copyTodosAsJson(selected);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${selected.length}件をクリップボードにコピーしました')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('コピーに失敗しました: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _handleExport() async {
     try {
       final state = ref.read(todoProvider);
@@ -75,6 +100,12 @@ class _ToolbarState extends ConsumerState<Toolbar> {
         final notifier = ref.read(todoProvider.notifier);
         notifier.setItems(data.items);
         await notifier.saveData();
+        await widget.onImportSuccess?.call();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('インポートしました')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -137,6 +168,11 @@ class _ToolbarState extends ConsumerState<Toolbar> {
                   AppColors.brandRed.withValues(alpha: 0.4),
               disabledForegroundColor: Colors.white70,
             ),
+          ),
+          OutlinedButton.icon(
+            onPressed: selectedCount > 0 ? _handleCopy : null,
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('コピー'),
           ),
           OutlinedButton(
             onPressed: _handleExport,

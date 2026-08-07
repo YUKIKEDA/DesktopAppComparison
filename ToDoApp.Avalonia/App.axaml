@@ -8,6 +8,20 @@
         <local:ViewLocator/>
     </Application.DataTemplates>
 
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/avalonia-logo.ico"
+                      ToolTipText="Todo App">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="表示" />
+                        <NativeMenuItem Header="終了" />
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>

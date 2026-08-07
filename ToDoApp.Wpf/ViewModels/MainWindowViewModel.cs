@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ToDoApp.Wpf.Models;
 using ToDoApp.Wpf.Services;
+using MessageBox = System.Windows.MessageBox;
 
 namespace ToDoApp.Wpf.ViewModels
 {
@@ -35,6 +36,7 @@ namespace ToDoApp.Wpf.ViewModels
             OnPropertyChanged(nameof(SelectedCount));
             UpdateAllFilteredSelected();
             OpenInNewWindowCommand.NotifyCanExecuteChanged();
+            CopySelectedCommand.NotifyCanExecuteChanged();
         }
 
         [ObservableProperty]
@@ -114,7 +116,7 @@ namespace ToDoApp.Wpf.ViewModels
                 _autoSaveTimer.Stop();
                 if (Items.Count > 0)
                 {
-                    await SaveDataAsync();
+                    await SaveDataCoreAsync(notify: false);
                 }
             };
             _autoSaveTimer.AutoReset = false;
@@ -202,10 +204,19 @@ namespace ToDoApp.Wpf.ViewModels
         [RelayCommand]
         private async Task SaveDataAsync()
         {
+            await SaveDataCoreAsync(notify: true);
+        }
+
+        private async Task SaveDataCoreAsync(bool notify)
+        {
             try
             {
                 var data = new ProjectData { Items = Items.ToList() };
                 await _dataService.SaveDataAsync(data);
+                if (notify)
+                {
+                    App.TrayService.ShowNotification("Todo App", "保存しました");
+                }
             }
             catch (Exception ex)
             {
@@ -340,8 +351,22 @@ namespace ToDoApp.Wpf.ViewModels
                 SelectedIds.Clear();
                 NotifySelectedCountChanged();
                 ApplyFilters();
-                await SaveDataAsync();
+                await SaveDataCoreAsync(notify: false);
             }
+        }
+
+        private bool CanCopySelected() => SelectedIds.Count > 0;
+
+        [RelayCommand(CanExecute = nameof(CanCopySelected))]
+        private void CopySelected()
+        {
+            var selected = Items.Where(item => SelectedIds.Contains(item.Id)).ToList();
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
+            ClipboardService.CopyTodoItems(selected);
         }
 
         [RelayCommand]
@@ -443,7 +468,8 @@ namespace ToDoApp.Wpf.ViewModels
             SelectedIds.Clear();
             NotifySelectedCountChanged();
             ApplyFilters();
-            await SaveDataAsync();
+            await SaveDataCoreAsync(notify: false);
+            App.TrayService.ShowNotification("Todo App", "インポートしました");
         }
 
         private bool CanOpenInNewWindow() => SelectedIds.Count == 1;
@@ -458,7 +484,7 @@ namespace ToDoApp.Wpf.ViewModels
             if (item == null) return;
 
             var detailWindow = new Views.ItemDetailWindow(item, UpdateItemFromDetail);
-            detailWindow.Owner = Application.Current.MainWindow;
+            detailWindow.Owner = System.Windows.Application.Current.MainWindow;
             detailWindow.Show();
         }
 
@@ -476,7 +502,7 @@ namespace ToDoApp.Wpf.ViewModels
             existingItem.IsCompleted = updated.IsCompleted;
 
             ApplyFilters();
-            _ = SaveDataAsync();
+            _ = SaveDataCoreAsync(notify: false);
         }
 
         [RelayCommand]
@@ -567,7 +593,7 @@ namespace ToDoApp.Wpf.ViewModels
             }
         }
 
-        public void HandleKeyDown(KeyEventArgs e)
+        public void HandleKeyDown(System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == Key.Delete && SelectedIds.Count > 0)
             {
@@ -585,6 +611,14 @@ namespace ToDoApp.Wpf.ViewModels
                 {
                     SaveDataCommand.Execute(null);
                     e.Handled = true;
+                }
+                else if (e.Key == Key.C)
+                {
+                    if (SelectedIds.Count > 0)
+                    {
+                        CopySelectedCommand.Execute(null);
+                        e.Handled = true;
+                    }
                 }
                 else if (e.Key == Key.F)
                 {

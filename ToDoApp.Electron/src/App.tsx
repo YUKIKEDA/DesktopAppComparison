@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useTodoStore } from "./store/useTodoStore";
 import { DataService } from "./lib/dataService";
 import { applyThemeClass } from "./lib/utils";
+import { showNotification } from "./lib/platform";
 import { Toolbar } from "./components/Toolbar";
 import { FilterBar } from "./components/FilterBar";
 import { TodoTable } from "./components/TodoTable";
@@ -91,6 +92,7 @@ function MainApp() {
       if (!data) return;
       setItems(data.items);
       await DataService.saveData({ items: data.items });
+      await showNotification("Todo App", "インポートしました");
     },
     [setItems]
   );
@@ -156,6 +158,19 @@ function MainApp() {
     });
   }, [setItems]);
 
+  // File association / argv / second-instance → importFromPath
+  useEffect(() => {
+    if (!window.electronAPI?.onOpenFile) return;
+    return window.electronAPI.onOpenFile(async (filePath) => {
+      try {
+        const data = await DataService.importFromPath(filePath);
+        await applyImportedData(data);
+      } catch (error) {
+        console.error("Open-file import failed:", error);
+      }
+    });
+  }, [applyImportedData]);
+
   // Auto-save with debounce
   useEffect(() => {
     if (skipSaveRef.current) {
@@ -173,19 +188,6 @@ function MainApp() {
     }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [items]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        DataService.saveData({ items }).catch(console.error);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [items]);
 
   return (

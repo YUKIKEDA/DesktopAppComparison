@@ -11,8 +11,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
-class TodoViewModel(private val dataService: IDataService) : ViewModel() {
+class TodoViewModel(
+    private val dataService: IDataService,
+    private val onNotify: (String) -> Unit = {}
+) : ViewModel() {
+    private val json = Json { prettyPrint = true }
     private val _items = MutableStateFlow<List<TodoItem>>(emptyList())
     val items: StateFlow<List<TodoItem>> = _items.asStateFlow()
 
@@ -241,11 +247,14 @@ class TodoViewModel(private val dataService: IDataService) : ViewModel() {
         }
     }
 
-    fun saveData() {
+    fun saveData(notify: Boolean = false) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 dataService.saveData(ProjectData(_items.value))
+                if (notify) {
+                    onNotify("保存しました")
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -274,6 +283,7 @@ class TodoViewModel(private val dataService: IDataService) : ViewModel() {
                 val result = dataService.importData()
                 result.onSuccess { data ->
                     applyImportedData(data)
+                    onNotify("インポートしました")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -290,6 +300,7 @@ class TodoViewModel(private val dataService: IDataService) : ViewModel() {
                 val result = dataService.importFromPath(path)
                 result.onSuccess { data ->
                     applyImportedData(data)
+                    onNotify("インポートしました")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -299,10 +310,16 @@ class TodoViewModel(private val dataService: IDataService) : ViewModel() {
         }
     }
 
+    fun copySelectedAsJson(): String? {
+        val selected = _items.value.filter { _selectedIds.value.contains(it.id) }
+        if (selected.isEmpty()) return null
+        return json.encodeToString(selected)
+    }
+
     private fun applyImportedData(data: ProjectData) {
         _items.value = data.items
         _selectedIds.value = emptySet()
-        saveData()
+        saveData(notify = false)
     }
 
     fun getItemById(id: Int): TodoItem? = _items.value.find { it.id == id }

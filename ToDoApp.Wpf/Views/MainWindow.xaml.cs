@@ -23,7 +23,7 @@ namespace ToDoApp.Wpf.Views
             DataContext = new MainWindowViewModel(_dataService);
         }
 
-        private void Window_KeyDown(object sender, KeyEventArgs e)
+        private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (DataContext is MainWindowViewModel viewModel)
             {
@@ -81,15 +81,23 @@ namespace ToDoApp.Wpf.Views
                 Height = Height
             };
             _dataService.SaveWindowSettingsAsync(settings).GetAwaiter().GetResult();
+
+            if (!App.TrayService.ExitRequested)
+            {
+                e.Cancel = true;
+                Hide();
+            }
         }
 
-        private void Window_DragOver(object sender, DragEventArgs e)
+        private void Window_DragOver(object sender, System.Windows.DragEventArgs e)
         {
-            e.Effects = HasJsonFileDrop(e) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Effects = HasJsonFileDrop(e)
+                ? System.Windows.DragDropEffects.Copy
+                : System.Windows.DragDropEffects.None;
             e.Handled = true;
         }
 
-        private async void Window_Drop(object sender, DragEventArgs e)
+        private async void Window_Drop(object sender, System.Windows.DragEventArgs e)
         {
             if (DataContext is not MainWindowViewModel viewModel)
             {
@@ -105,19 +113,19 @@ namespace ToDoApp.Wpf.Views
             await viewModel.ImportFromPathAsync(path);
         }
 
-        private static bool HasJsonFileDrop(DragEventArgs e)
+        private static bool HasJsonFileDrop(System.Windows.DragEventArgs e)
         {
             return GetDroppedJsonPath(e) != null;
         }
 
-        private static string? GetDroppedJsonPath(DragEventArgs e)
+        private static string? GetDroppedJsonPath(System.Windows.DragEventArgs e)
         {
-            if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+            if (!e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
             {
                 return null;
             }
 
-            if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0)
+            if (e.Data.GetData(System.Windows.DataFormats.FileDrop) is not string[] files || files.Length == 0)
             {
                 return null;
             }

@@ -41,6 +41,7 @@ namespace ToDoApp.Avalonia.ViewModels;
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(CanOpenInNewWindow));
         OpenInNewWindowCommand.NotifyCanExecuteChanged();
+        CopySelectedCommand.NotifyCanExecuteChanged();
         UpdateAllFilteredSelected();
     }
 
@@ -127,7 +128,7 @@ namespace ToDoApp.Avalonia.ViewModels;
             _autoSaveTimer.Stop();
             if (Items.Count > 0)
             {
-                await SaveDataAsync();
+                await SaveDataCoreAsync(notify: false);
             }
         };
         _autoSaveTimer.AutoReset = false;
@@ -241,10 +242,19 @@ namespace ToDoApp.Avalonia.ViewModels;
     [RelayCommand]
     private async Task SaveDataAsync()
     {
+        await SaveDataCoreAsync(notify: true);
+    }
+
+    private async Task SaveDataCoreAsync(bool notify)
+    {
         try
         {
             var data = new ProjectData { Items = Items.ToList() };
             await _dataService.SaveDataAsync(data);
+            if (notify)
+            {
+                WindowsBalloonNotification.Show("Todo App", "保存しました");
+            }
         }
         catch (Exception)
         {
@@ -366,7 +376,7 @@ namespace ToDoApp.Avalonia.ViewModels;
         ApplyFilters();
         
         // データを明示的に保存
-        await SaveDataAsync();
+        await SaveDataCoreAsync(notify: false);
     }
 
     [RelayCommand]
@@ -408,7 +418,21 @@ namespace ToDoApp.Avalonia.ViewModels;
         SelectedIds.Clear();
         NotifySelectedCountChanged();
         ApplyFilters();
-        await SaveDataAsync();
+        await SaveDataCoreAsync(notify: false);
+    }
+
+    private bool CanCopySelected() => SelectedIds.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanCopySelected))]
+    private async Task CopySelectedAsync()
+    {
+        var selected = Items.Where(item => SelectedIds.Contains(item.Id)).ToList();
+        if (selected.Count == 0)
+        {
+            return;
+        }
+
+        await ClipboardService.CopyTodoItemsAsync(_window, selected);
     }
 
     [RelayCommand]
@@ -510,7 +534,8 @@ namespace ToDoApp.Avalonia.ViewModels;
         SelectedIds.Clear();
         NotifySelectedCountChanged();
         ApplyFilters();
-        await SaveDataAsync();
+        await SaveDataCoreAsync(notify: false);
+        WindowsBalloonNotification.Show("Todo App", "インポートしました");
     }
 
     public async Task ApplyItemUpdateAsync(TodoItem editingItem)
@@ -538,7 +563,7 @@ namespace ToDoApp.Avalonia.ViewModels;
         };
         Items.Insert(index, updatedItem);
         ApplyFilters();
-        await SaveDataAsync();
+        await SaveDataCoreAsync(notify: false);
     }
 
     [RelayCommand(CanExecute = nameof(CanOpenInNewWindow))]
@@ -698,6 +723,14 @@ namespace ToDoApp.Avalonia.ViewModels;
             {
                 SaveDataCommand.Execute(null);
                 e.Handled = true;
+            }
+            else if (e.Key == Key.C)
+            {
+                if (SelectedIds.Count > 0)
+                {
+                    CopySelectedCommand.Execute(null);
+                    e.Handled = true;
+                }
             }
             else if (e.Key == Key.F)
             {

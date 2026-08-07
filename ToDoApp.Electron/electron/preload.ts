@@ -38,6 +38,17 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener("theme:changed", listener);
     };
   },
+  showNotification: (title, body) =>
+    ipcRenderer.invoke("app:notify", { title, body }),
+  onOpenFile: (callback) => {
+    const listener = (_event: unknown, filePath: string) => {
+      if (typeof filePath === "string") callback(filePath);
+    };
+    ipcRenderer.on("app:open-file", listener);
+    return () => {
+      ipcRenderer.removeListener("app:open-file", listener);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);

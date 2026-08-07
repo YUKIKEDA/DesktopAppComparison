@@ -35,6 +35,12 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
         WindowGeometryService.Save(this, _dataService.WindowSettingsPath);
+
+        if (global::Avalonia.Application.Current is App app && !app.ShouldExit)
+        {
+            e.Cancel = true;
+            Hide();
+        }
     }
 
     private void OnDragOver(object? sender, DragEventArgs e)

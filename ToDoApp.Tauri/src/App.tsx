@@ -5,6 +5,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTodoStore } from "./store/useTodoStore";
 import { DataService } from "./lib/dataService";
 import { applyThemeClass } from "./lib/utils";
+import { showNotification } from "./lib/platform";
+import { isQuitting, setupSystemTray } from "./lib/trayService";
 import { Toolbar } from "./components/Toolbar";
 import { FilterBar } from "./components/FilterBar";
 import { TodoTable } from "./components/TodoTable";
@@ -101,6 +103,7 @@ function MainApp() {
       setItems(data.items);
       await DataService.saveData({ items: data.items });
       await emit("data-changed");
+      await showNotification("Todo App", "インポートしました");
     },
     [setItems]
   );
@@ -121,6 +124,11 @@ function MainApp() {
     };
     void loadData();
   }, [setItems, setLoading]);
+
+  // System tray
+  useEffect(() => {
+    void setupSystemTray();
+  }, []);
 
   // Transparency: prefer real window opacity; CSS alpha fallback otherwise
   useEffect(() => {
@@ -153,7 +161,7 @@ function MainApp() {
     })();
   }, []);
 
-  // Position memory: save on close (restore is done in Rust setup)
+  // Close-to-tray: hide instead of quit (終了 from tray sets isQuitting)
   useEffect(() => {
     const appWindow = getCurrentWindow();
     let unlisten: (() => void) | undefined;
@@ -173,8 +181,15 @@ function MainApp() {
         } catch (error) {
           console.error("Failed to save window bounds:", error);
         }
-        // allow close
-        void event;
+
+        if (!isQuitting) {
+          event.preventDefault();
+          try {
+            await appWindow.hide();
+          } catch (error) {
+            console.error("Failed to hide window:", error);
+          }
+        }
       })
       .then((fn) => {
         unlisten = fn;
@@ -219,6 +234,26 @@ function MainApp() {
     };
   }, [applyImportedData]);
 
+  // File association / CLI args / Opened event → importFromPath
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen<string>("open-file", async (event) => {
+      const filePath = event.payload;
+      if (!filePath || typeof filePath !== "string") return;
+      try {
+        const data = await DataService.importFromPath(filePath);
+        await applyImportedData(data);
+      } catch (error) {
+        console.error("Open-file import failed:", error);
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [applyImportedData]);
+
   // Sync when another window saves
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -256,21 +291,6 @@ function MainApp() {
     }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [items]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        DataService.saveData({ items })
-          .then(() => emit("data-changed"))
-          .catch(console.error);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [items]);
 
   return (

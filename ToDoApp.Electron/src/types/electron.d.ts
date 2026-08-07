@@ -18,6 +18,10 @@ export interface ElectronAPI {
   getPathForFile: (file: File) => string;
   onDataChanged: (callback: () => void) => () => void;
   onThemeChanged: (callback: () => void) => () => void;
+
+  // Platform integration
+  showNotification: (title: string, body: string) => Promise<void>;
+  onOpenFile: (callback: (filePath: string) => void) => () => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

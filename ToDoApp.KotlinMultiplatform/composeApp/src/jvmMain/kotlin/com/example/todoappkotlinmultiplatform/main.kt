@@ -17,9 +17,13 @@ import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetDropEvent
 import java.io.File
 
-fun main() = application {
+fun main(args: Array<String>) = application {
     val dataService = remember { DataService() }
-    val viewModel = remember { TodoViewModel(dataService) }
+    val viewModel = remember {
+        TodoViewModel(dataService) { message ->
+            TraySupport.notify("Todo App", message)
+        }
+    }
 
     val initialGeometry = remember { dataService.loadWindowGeometry() }
     val windowState = rememberWindowState(
@@ -34,6 +38,8 @@ fun main() = application {
     )
 
     var detailWindowIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var mainWindowVisible by remember { mutableStateOf(true) }
+    var isExiting by remember { mutableStateOf(false) }
 
     fun saveCurrentGeometry() {
         val position = windowState.position
@@ -57,11 +63,38 @@ fun main() = application {
         }
     }
 
+    fun exitApp() {
+        if (isExiting) return
+        isExiting = true
+        saveCurrentGeometry()
+        TraySupport.uninstall()
+        exitApplication()
+    }
+
+    DisposableEffect(Unit) {
+        TraySupport.install(
+            onShow = { mainWindowVisible = true },
+            onQuit = { exitApp() }
+        )
+        onDispose {
+            TraySupport.uninstall()
+        }
+    }
+
+    // File association (argv only): import .json paths passed at startup
+    LaunchedEffect(Unit) {
+        args.filter { it.endsWith(".json", ignoreCase = true) }
+            .map { File(it) }
+            .filter { it.isFile }
+            .forEach { viewModel.importFromPath(it.absolutePath) }
+    }
+
     Window(
         onCloseRequest = {
             saveCurrentGeometry()
-            exitApplication()
+            mainWindowVisible = false
         },
+        visible = mainWindowVisible,
         title = "Todo App",
         state = windowState
     ) {
