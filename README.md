@@ -31,17 +31,17 @@ GitHub ProjectのTable viewを参考にした、テーブル形式のプロジ�
 
 #### 2. カラム定義
 
-| カラム名 | フィールド名 | データ型 | 説明 | 編集可能 |
-|---------|------------|---------|------|---------|
-| ID | `id` | 数値 | 連番（1から開始、自動生成） | 不可 |
-| タイトル | `title` | 文字列 | 最大200文字、必須 | 可 |
-| 説明 | `description` | 文字列 | 最大500文字、任意 | 可 |
-| ステータス | `status` | 選択値 | 未着手、進行中、完了など | 可 |
-| 優先度 | `priority` | 選択値 | 低、中、高など | 可 |
-| 期限 | `dueDate` | 日時 | ISO 8601形式、任意 | 可 |
-| 完了 | `isCompleted` | 真偽値 | 完了フラグ | 可 |
-| 作成日時 | `createdAt` | 日時 | ISO 8601形式、自動設定 | 不可 |
-| 更新日時 | `updatedAt` | 日時 | ISO 8601形式、自動更新 | 不可 |
+| Column      | Field         | Type     | Description                              | Editable |
+| ----------- | ------------- | -------- | ---------------------------------------- | -------- |
+| ID          | `id`          | number   | Sequential (starts at 1, auto-generated) | No       |
+| Title       | `title`       | string   | Max 200 chars, required                  | Yes      |
+| Description | `description` | string   | Max 500 chars, optional                  | Yes      |
+| Status      | `status`      | enum     | e.g. Not started, In progress, Done      | Yes      |
+| Priority    | `priority`    | enum     | e.g. Low, Medium, High                   | Yes      |
+| Due Date    | `dueDate`     | datetime | ISO 8601, optional                       | Yes      |
+| Completed   | `isCompleted` | boolean  | Completion flag                          | Yes      |
+| Created At  | `createdAt`   | datetime | ISO 8601, set automatically              | No       |
+| Updated At  | `updatedAt`   | datetime | ISO 8601, updated automatically          | No       |
 
 #### 3. CRUD操作
 
@@ -250,6 +250,7 @@ GitHub ProjectのTable viewを参考にした、テーブル形式のプロジ�
 - 開発の容易さ
 - ドキュメントの充実度
 - コミュニティサポート
+- テスタビリティ（UIテストの容易さ、自動化のしやすさなど）
 
 ## 比較結果
 
@@ -301,188 +302,189 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### 基本機能
 
-| フレームワーク | CRUD操作 | フィルタリング | データ永続化 | 検索機能 | ソート機能 | 備考 |
-|--------------|---------|--------------|------------|---------|----------|------|
-| Avalonia | - | - | - | - | - | 実装待ち |
-| Compose Multiplatform | - | - | - | - | - | 実装待ち |
-| Electron | - | - | - | - | - | 実装待ち |
-| Flutter | - | - | - | - | - | 実装待ち |
-| GPUI | - | - | - | - | - | 除外（ファイルピッカーなどの機能不足のため） |
-| MAUI | - | - | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - | - | 実装待ち |
-| WinForms | - | - | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - | - | 実装待ち |
-| WinUI3 | - | - | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - | - | 実装待ち |
+| Framework             | CRUD | Filtering | Persistence | Search | Sort | Notes                        |
+| --------------------- | ---- | --------- | ----------- | ------ | ---- | ---------------------------- |
+| Avalonia              | -    | -         | -           | -      | -    | Pending                      |
+| Compose Multiplatform | -    | -         | -           | -      | -    | Pending                      |
+| Electron              | -    | -         | -           | -      | -    | Pending                      |
+| Flutter               | -    | -         | -           | -      | -    | Pending                      |
+| GPUI                  | -    | -         | -           | -      | -    | Excluded (no file picker)    |
+| MAUI                  | -    | -         | -           | -      | -    | Excluded (WinUI3 wrapper)    |
+| React Native          | -    | -         | -           | -      | -    | Excluded (insufficient info) |
+| Tauri                 | -    | -         | -           | -      | -    | Pending                      |
+| WinForms              | -    | -         | -           | -      | -    | Excluded (limited UI)        |
+| WPF                   | -    | -         | -           | -      | -    | Pending                      |
+| WinUI3                | -    | -         | -           | -      | -    | Excluded (no DataGrid)       |
+| wxWidgets             | -    | -         | -           | -      | -    | Pending                      |
 
-**凡例**: ✅ 実装済み / ❌ 未実装 / ⚠️ 部分的実装 / - 未確認
+**Legend**: ✅ Implemented / ❌ Not implemented / ⚠️ Partial / - Not checked
 
 #### ウィンドウ機能
 
-| フレームワーク | マルチウィンドウ | ウィンドウサイズ変更 | ウィンドウ位置記憶 | ドラッグ&ドロップ | ウィンドウ透過 | 備考 |
-|--------------|---------------|-----------------|-----------------|----------------|-------------|------|
-| Avalonia | - | - | - | - | - | 実装待ち |
-| Compose Multiplatform | - | - | - | - | - | 実装待ち |
-| Electron | - | - | - | - | - | 実装待ち |
-| Flutter | - | - | - | - | - | 実装待ち |
-| GPUI | - | - | - | - | - | 除外（ファイルピッカーなどの機能不足のため） |
-| MAUI | - | - | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - | - | 実装待ち |
-| WinForms | - | - | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - | - | 実装待ち |
-| WinUI3 | - | - | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - | - | 実装待ち |
+| Framework             | Multi-window | Resize | Position memory | Drag & drop | Transparency | Notes                        |
+| --------------------- | ------------ | ------ | --------------- | ----------- | ------------ | ---------------------------- |
+| Avalonia              | -            | -      | -               | -           | -            | Pending                      |
+| Compose Multiplatform | -            | -      | -               | -           | -            | Pending                      |
+| Electron              | -            | -      | -               | -           | -            | Pending                      |
+| Flutter               | -            | -      | -               | -           | -            | Pending                      |
+| GPUI                  | -            | -      | -               | -           | -            | Excluded (no file picker)    |
+| MAUI                  | -            | -      | -               | -           | -            | Excluded (WinUI3 wrapper)    |
+| React Native          | -            | -      | -               | -           | -            | Excluded (insufficient info) |
+| Tauri                 | -            | -      | -               | -           | -            | Pending                      |
+| WinForms              | -            | -      | -               | -           | -            | Excluded (limited UI)        |
+| WPF                   | -            | -      | -               | -           | -            | Pending                      |
+| WinUI3                | -            | -      | -               | -           | -            | Excluded (no DataGrid)       |
+| wxWidgets             | -            | -      | -               | -           | -            | Pending                      |
 
-**凡例**: ✅ サポート / ❌ 未サポート / ⚠️ 部分的サポート / - 未確認
+**Legend**: ✅ Supported / ❌ Not supported / ⚠️ Partial / - Not checked
 
 #### UI機能
 
-| フレームワーク | テーマ切り替え | ダークモード | カスタムスタイル | アニメーション | レスポンシブレイアウト | 備考 |
-|--------------|-------------|-----------|---------------|-------------|-----------------|------|
-| Avalonia | - | - | - | - | - | 実装待ち |
-| Compose Multiplatform | - | - | - | - | - | 実装待ち |
-| Electron | - | - | - | - | - | 実装待ち |
-| Flutter | - | - | - | - | - | 実装待ち |
-| GPUI | - | - | - | - | - | 除外（ファイルピッカーなどの機能不足のため） |
-| MAUI | - | - | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - | - | 実装待ち |
-| WinForms | - | - | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - | - | 実装待ち |
-| WinUI3 | - | - | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - | - | 実装待ち |
+| Framework             | Theme switch | Dark mode | Custom style | Animation | Responsive layout | Notes                        |
+| --------------------- | ------------ | --------- | ------------ | --------- | ----------------- | ---------------------------- |
+| Avalonia              | -            | -         | -            | -         | -                 | Pending                      |
+| Compose Multiplatform | -            | -         | -            | -         | -                 | Pending                      |
+| Electron              | -            | -         | -            | -         | -                 | Pending                      |
+| Flutter               | -            | -         | -            | -         | -                 | Pending                      |
+| GPUI                  | -            | -         | -            | -         | -                 | Excluded (no file picker)    |
+| MAUI                  | -            | -         | -            | -         | -                 | Excluded (WinUI3 wrapper)    |
+| React Native          | -            | -         | -            | -         | -                 | Excluded (insufficient info) |
+| Tauri                 | -            | -         | -            | -         | -                 | Pending                      |
+| WinForms              | -            | -         | -            | -         | -                 | Excluded (limited UI)        |
+| WPF                   | -            | -         | -            | -         | -                 | Pending                      |
+| WinUI3                | -            | -         | -            | -         | -                 | Excluded (no DataGrid)       |
+| wxWidgets             | -            | -         | -            | -         | -                 | Pending                      |
 
-**凡例**: ✅ サポート / ❌ 未サポート / ⚠️ 部分的サポート / - 未確認
+**Legend**: ✅ Supported / ❌ Not supported / ⚠️ Partial / - Not checked
 
 #### プラットフォーム統合機能
 
-| フレームワーク | システム通知 | システムトレイ | ファイル関連付け | ネイティブダイアログ | クリップボード | 備考 |
-|--------------|-----------|-------------|---------------|-----------------|-------------|------|
-| Avalonia | - | - | - | - | - | 実装待ち |
-| Compose Multiplatform | - | - | - | - | - | 実装待ち |
-| Electron | - | - | - | - | - | 実装待ち |
-| Flutter | - | - | - | - | - | 実装待ち |
-| GPUI | - | - | - | - | - | 除外（ファイルピッカーなどの機能不足のため） |
-| MAUI | - | - | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - | - | 実装待ち |
-| WinForms | - | - | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - | - | 実装待ち |
-| WinUI3 | - | - | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - | - | 実装待ち |
+| Framework             | Notification | System tray | File association | Native dialog | Clipboard | Notes                        |
+| --------------------- | ------------ | ----------- | ---------------- | ------------- | --------- | ---------------------------- |
+| Avalonia              | -            | -           | -                | -             | -         | Pending                      |
+| Compose Multiplatform | -            | -           | -                | -             | -         | Pending                      |
+| Electron              | -            | -           | -                | -             | -         | Pending                      |
+| Flutter               | -            | -           | -                | -             | -         | Pending                      |
+| GPUI                  | -            | -           | -                | -             | -         | Excluded (no file picker)    |
+| MAUI                  | -            | -           | -                | -             | -         | Excluded (WinUI3 wrapper)    |
+| React Native          | -            | -           | -                | -             | -         | Excluded (insufficient info) |
+| Tauri                 | -            | -           | -                | -             | -         | Pending                      |
+| WinForms              | -            | -           | -                | -             | -         | Excluded (limited UI)        |
+| WPF                   | -            | -           | -                | -             | -         | Pending                      |
+| WinUI3                | -            | -           | -                | -             | -         | Excluded (no DataGrid)       |
+| wxWidgets             | -            | -           | -                | -             | -         | Pending                      |
 
-**凡例**: ✅ サポート / ❌ 未サポート / ⚠️ 部分的サポート / - 未確認
+**Legend**: ✅ Supported / ❌ Not supported / ⚠️ Partial / - Not checked
 
 #### パフォーマンス機能
 
-| フレームワーク | 仮想化リスト | 遅延読み込み | バックグラウンド処理 | 非同期処理 | メモリ最適化 | 備考 |
-|--------------|------------|-----------|-----------------|-----------|------------|------|
-| Avalonia | - | - | - | - | - | 実装待ち |
-| Compose Multiplatform | - | - | - | - | - | 実装待ち |
-| Electron | - | - | - | - | - | 実装待ち |
-| Flutter | - | - | - | - | - | 実装待ち |
-| GPUI | - | - | - | - | - | 除外（ファイルピッカーなどの機能不足のため） |
-| MAUI | - | - | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - | - | 実装待ち |
-| WinForms | - | - | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - | - | 実装待ち |
-| WinUI3 | - | - | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - | - | 実装待ち |
+| Framework             | Virtual list | Lazy load | Background work | Async | Memory opt. | Notes                        |
+| --------------------- | ------------ | --------- | --------------- | ----- | ----------- | ---------------------------- |
+| Avalonia              | -            | -         | -               | -     | -           | Pending                      |
+| Compose Multiplatform | -            | -         | -               | -     | -           | Pending                      |
+| Electron              | -            | -         | -               | -     | -           | Pending                      |
+| Flutter               | -            | -         | -               | -     | -           | Pending                      |
+| GPUI                  | -            | -         | -               | -     | -           | Excluded (no file picker)    |
+| MAUI                  | -            | -         | -               | -     | -           | Excluded (WinUI3 wrapper)    |
+| React Native          | -            | -         | -               | -     | -           | Excluded (insufficient info) |
+| Tauri                 | -            | -         | -               | -     | -           | Pending                      |
+| WinForms              | -            | -         | -               | -     | -           | Excluded (limited UI)        |
+| WPF                   | -            | -         | -               | -     | -           | Pending                      |
+| WinUI3                | -            | -         | -               | -     | -           | Excluded (no DataGrid)       |
+| wxWidgets             | -            | -         | -               | -     | -           | Pending                      |
 
-**凡例**: ✅ サポート / ❌ 未サポート / ⚠️ 部分的サポート / - 未確認
+**Legend**: ✅ Supported / ❌ Not supported / ⚠️ Partial / - Not checked
 
 ### 実装面の比較
 
-| フレームワーク | コード行数（LOC） | 依存関係数 | ビルド時間（秒） | バンドルサイズ（MB） | 備考 |
-|--------------|-----------------|----------|----------------|-------------------|------|
-| Avalonia | - | - | - | - | 測定待ち |
-| Compose Multiplatform | - | - | - | - | 測定待ち |
-| Electron | - | - | - | - | 測定待ち |
-| Flutter | - | - | - | - | 測定待ち |
-| GPUI | - | - | - | - | 測定待ち |
-| MAUI | - | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - | 測定待ち |
-| WinForms | - | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - | 測定待ち |
-| WinUI3 | - | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - | 測定待ち |
+| Framework             | LOC | Dependencies | Build time (s) | Bundle size (MB) | Notes                        |
+| --------------------- | --- | ------------ | -------------- | ---------------- | ---------------------------- |
+| Avalonia              | -   | -            | -              | -                | Pending                      |
+| Compose Multiplatform | -   | -            | -              | -                | Pending                      |
+| Electron              | -   | -            | -              | -                | Pending                      |
+| Flutter               | -   | -            | -              | -                | Pending                      |
+| GPUI                  | -   | -            | -              | -                | Pending                      |
+| MAUI                  | -   | -            | -              | -                | Excluded (WinUI3 wrapper)    |
+| React Native          | -   | -            | -              | -                | Excluded (insufficient info) |
+| Tauri                 | -   | -            | -              | -                | Pending                      |
+| WinForms              | -   | -            | -              | -                | Excluded (limited UI)        |
+| WPF                   | -   | -            | -              | -                | Pending                      |
+| WinUI3                | -   | -            | -              | -                | Excluded (no DataGrid)       |
+| wxWidgets             | -   | -            | -              | -                | Pending                      |
 
 ### 実行時パフォーマンスの比較
 
 #### メモリ使用量（MB）
 
-| フレームワーク | 起動直後（空） | 10件追加後 | 100件追加後 | 1000件追加後 | ピーク |
-|--------------|--------------|-----------|------------|-------------|--------|
-| Avalonia | - | - | - | - | - |
-| Compose Multiplatform | - | - | - | - | - |
-| Electron | - | - | - | - | - |
-| Flutter | - | - | - | - | - |
-| GPUI | - | - | - | - | - |
-| MAUI | - | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - | - |
-| WinForms | - | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - | - |
-| WinUI3 | - | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - | - |
+| Framework             | Startup (empty) | After 10 | After 100 | After 1000 | Peak                         |
+| --------------------- | --------------- | -------- | --------- | ---------- | ---------------------------- |
+| Avalonia              | -               | -        | -         | -          | -                            |
+| Compose Multiplatform | -               | -        | -         | -          | -                            |
+| Electron              | -               | -        | -         | -          | -                            |
+| Flutter               | -               | -        | -         | -          | -                            |
+| GPUI                  | -               | -        | -         | -          | -                            |
+| MAUI                  | -               | -        | -         | -          | Excluded (WinUI3 wrapper)    |
+| React Native          | -               | -        | -         | -          | Excluded (insufficient info) |
+| Tauri                 | -               | -        | -         | -          | -                            |
+| WinForms              | -               | -        | -         | -          | Excluded (limited UI)        |
+| WPF                   | -               | -        | -         | -          | -                            |
+| WinUI3                | -               | -        | -         | -          | Excluded (no DataGrid)       |
+| wxWidgets             | -               | -        | -         | -          | -                            |
 
 #### CPU使用率（%）
 
-| フレームワーク | アイドル時 | 追加操作時 | スクロール時 | フィルタリング時 | ピーク |
-|--------------|----------|----------|------------|----------------|--------|
-| Avalonia | - | - | - | - | - |
-| Compose Multiplatform | - | - | - | - | - |
-| Electron | - | - | - | - | - |
-| Flutter | - | - | - | - | - |
-| GPUI | - | - | - | - | - |
-| MAUI | - | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - | - |
-| WinForms | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - | - |
-| WinUI3 | - | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - | - |
+| Framework             | Idle | Add | Scroll | Filtering | Peak                         |
+| --------------------- | ---- | --- | ------ | --------- | ---------------------------- |
+| Avalonia              | -    | -   | -      | -         | -                            |
+| Compose Multiplatform | -    | -   | -      | -         | -                            |
+| Electron              | -    | -   | -      | -         | -                            |
+| Flutter               | -    | -   | -      | -         | -                            |
+| GPUI                  | -    | -   | -      | -         | -                            |
+| MAUI                  | -    | -   | -      | -         | Excluded (WinUI3 wrapper)    |
+| React Native          | -    | -   | -      | -         | Excluded (insufficient info) |
+| Tauri                 | -    | -   | -      | -         | -                            |
+| WinForms              | -    | -   | -      | -         | Excluded (limited UI)        |
+| WPF                   | -    | -   | -      | -         | -                            |
+| WinUI3                | -    | -   | -      | -         | Excluded (no DataGrid)       |
+| wxWidgets             | -    | -   | -      | -         | -                            |
 
 #### 起動時間とUI応答性
 
-| フレームワーク | 起動時間（秒） | 1000件表示時間（秒） | スクロールFPS | フィルタリング応答時間（ms） |
-|--------------|--------------|-------------------|-------------|-------------------------|
-| Avalonia | - | - | - | - |
-| Compose Multiplatform | - | - | - | - |
-| Electron | - | - | - | - |
-| Flutter | - | - | - | - |
-| GPUI | - | - | - | - |
-| MAUI | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - |
-| WinForms | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - |
-| WinUI3 | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - |
+| Framework             | Startup (s) | Render 1000 (s) | Scroll FPS | Filter response (ms)         |
+| --------------------- | ----------- | --------------- | ---------- | ---------------------------- |
+| Avalonia              | -           | -               | -          | -                            |
+| Compose Multiplatform | -           | -               | -          | -                            |
+| Electron              | -           | -               | -          | -                            |
+| Flutter               | -           | -               | -          | -                            |
+| GPUI                  | -           | -               | -          | -                            |
+| MAUI                  | -           | -               | -          | Excluded (WinUI3 wrapper)    |
+| React Native          | -           | -               | -          | Excluded (insufficient info) |
+| Tauri                 | -           | -               | -          | -                            |
+| WinForms              | -           | -               | -          | Excluded (limited UI)        |
+| WPF                   | -           | -               | -          | -                            |
+| WinUI3                | -           | -               | -          | Excluded (no DataGrid)       |
+| wxWidgets             | -           | -               | -          | -                            |
 
 ### 開発体験の評価
 
-| フレームワーク | 開発の容易さ | ドキュメント | コミュニティ | 総合評価 |
-|--------------|------------|------------|------------|---------|
-| Avalonia | - | - | - | - |
-| Compose Multiplatform | - | - | - | - |
-| Electron | - | - | - | - |
-| Flutter | - | - | - | - |
-| GPUI | - | - | - | - |
-| MAUI | - | - | - | 除外（WinUI3のラッパーのため） |
-| React Native | - | - | - | 除外（情報不足のため） |
-| Tauri | - | - | - | - |
-| WinForms | - | - | - | 除外（デザインの自由度不足のため） |
-| WPF | - | - | - | - |
-| WinUI3 | - | - | - | 除外（情報不足・標準コンポーネント不足のため） |
-| wxWidgets | - | - | - | - |
+| Framework             | Ease of use | Docs | Community | Testability | Overall                      |
+| --------------------- | ----------- | ---- | --------- | ----------- | ---------------------------- |
+| Avalonia              | -           | -    | -         | -           | -                            |
+| Compose Multiplatform | -           | -    | -         | -           | -                            |
+| Electron              | -           | -    | -         | -           | -                            |
+| Flutter               | -           | -    | -         | -           | -                            |
+| GPUI                  | -           | -    | -         | -           | -                            |
+| MAUI                  | -           | -    | -         | -           | Excluded (WinUI3 wrapper)    |
+| React Native          | -           | -    | -         | -           | Excluded (insufficient info) |
+| Tauri                 | -           | -    | -         | -           | -                            |
+| WinForms              | -           | -    | -         | -           | Excluded (limited UI)        |
+| WPF                   | -           | -    | -         | -           | -                            |
+| WinUI3                | -           | -    | -         | -           | Excluded (no DataGrid)       |
+| wxWidgets             | -           | -    | -         | -           | -                            |
 
-**評価基準**:
-- 開発の容易さ: ⭐⭐⭐⭐⭐（5段階評価）
-- ドキュメント: ⭐⭐⭐⭐⭐（5段階評価）
-- コミュニティ: ⭐⭐⭐⭐⭐（5段階評価）
-- 総合評価: ⭐⭐⭐⭐⭐（5段階評価）
+**Rating criteria**:
+- Ease of use: ⭐⭐⭐⭐⭐ (5-point scale)
+- Docs: ⭐⭐⭐⭐⭐ (5-point scale)
+- Community: ⭐⭐⭐⭐⭐ (5-point scale)
+- Testability: ⭐⭐⭐⭐⭐ (5-point scale) — UI test automation ease, tooling maturity, testability hooks (e.g. AutomationId / semantics)
+- Overall: ⭐⭐⭐⭐⭐ (5-point scale)
