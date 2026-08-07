@@ -66,10 +66,13 @@ namespace ToDoApp.WinUI.ViewModels
                                         !string.IsNullOrWhiteSpace(StatusFilter) || 
                                         !string.IsNullOrWhiteSpace(PriorityFilter);
 
+        public bool CanOpenInNewWindow => SelectedIds.Count == 1;
+
         public MainWindowViewModel(IDataService dataService)
         {
             _dataService = dataService;
             _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+            SelectedIds.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanOpenInNewWindow));
             _ = LoadDataAsync();
         }
 
@@ -154,19 +157,54 @@ namespace ToDoApp.WinUI.ViewModels
                 var data = await _dataService.ImportDataAsync();
                 if (data != null)
                 {
-                    Items.Clear();
-                    foreach (var item in data.Items)
-                    {
-                        Items.Add(item);
-                    }
-                    ApplyFilters();
-                    await SaveDataAsync();
+                    await ApplyImportedDataAsync(data);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error importing data: {ex.Message}");
             }
+        }
+
+        public async Task ImportFromPathAsync(string path)
+        {
+            try
+            {
+                var data = await _dataService.ImportFromPathAsync(path);
+                if (data != null)
+                {
+                    await ApplyImportedDataAsync(data);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error importing from path: {ex.Message}");
+            }
+        }
+
+        private async Task ApplyImportedDataAsync(ProjectData data)
+        {
+            Items.Clear();
+            foreach (var item in data.Items)
+            {
+                Items.Add(item);
+            }
+            SelectedIds.Clear();
+            ApplyFilters();
+            await SaveDataAsync();
+        }
+
+        public void NotifyItemUpdated(TodoItem item)
+        {
+            var index = Items.IndexOf(item);
+            if (index >= 0)
+            {
+                Items.RemoveAt(index);
+                Items.Insert(index, item);
+            }
+
+            ApplyFilters();
+            TriggerAutoSave();
         }
 
         [RelayCommand]

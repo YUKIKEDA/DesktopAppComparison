@@ -9,7 +9,9 @@ namespace ToDoApp.WinUI.Services
         Task SaveDataAsync(ProjectData data);
         Task ExportDataAsync(ProjectData data);
         Task<ProjectData?> ImportDataAsync();
+        Task<ProjectData?> ImportFromPathAsync(string path);
         Task OpenDataFolderAsync();
+        string GetDataDirectory();
     }
 }
 

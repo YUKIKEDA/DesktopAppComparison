@@ -2,9 +2,9 @@
 import json
 import os
 import sys
-import traceback
 from pathlib import Path
 from typing import List, Optional
+
 import wx
 
 from .todo_item import TodoItem
@@ -50,7 +50,18 @@ class DataService:
     def __init__(self):
         self._data_dir = self._get_data_dir()
         self._data_file = self._data_dir / "project.json"
+        self._window_file = self._data_dir / "window.json"
         self._ensure_data_dir()
+
+    @property
+    def data_dir(self) -> Path:
+        """Public data directory path."""
+        return self._data_dir
+
+    @property
+    def window_settings_path(self) -> Path:
+        """Path to window.json."""
+        return self._window_file
 
     def _get_data_dir(self) -> Path:
         """Get data directory path."""
@@ -177,19 +188,66 @@ class DataService:
             if fileDialog.ShowModal() == wx.ID_CANCEL:
                 return None
 
-            try:
-                path = fileDialog.GetPath()
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    return ProjectData.from_dict(data)
-            except Exception as e:
-                wx.LogError(f"Failed to import data: {e}")
-                wx.MessageBox(
-                    f"インポートに失敗しました: {e}",
-                    "エラー",
-                    wx.OK | wx.ICON_ERROR
-                )
+            return self.import_from_path(fileDialog.GetPath(), parent=parent)
+
+    def import_from_path(self, path: str, parent: Optional[wx.Window] = None) -> Optional[ProjectData]:
+        """Import data from a given file path (shared parse with import_data)."""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if not isinstance(data, dict):
+                    raise ValueError(f"Expected dict, got {type(data)}")
+                return ProjectData.from_dict(data)
+        except Exception as e:
+            wx.LogError(f"Failed to import data from path: {e}")
+            wx.MessageBox(
+                f"インポートに失敗しました: {e}",
+                "エラー",
+                wx.OK | wx.ICON_ERROR,
+                parent
+            )
+            return None
+
+    def load_window_geometry(self) -> Optional[dict]:
+        """Load window position/size from window.json."""
+        try:
+            self._ensure_data_dir()
+            if not self._window_file.exists():
                 return None
+            with open(self._window_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return None
+            width = int(data.get("width", 0))
+            height = int(data.get("height", 0))
+            if width < 100 or height < 100:
+                return None
+            return {
+                "x": int(data.get("x", 100)),
+                "y": int(data.get("y", 100)),
+                "width": width,
+                "height": height,
+            }
+        except Exception as e:
+            wx.LogError(f"Failed to load window geometry: {e}")
+            return None
+
+    def save_window_geometry(self, x: int, y: int, width: int, height: int) -> None:
+        """Save window position/size to window.json."""
+        try:
+            self._ensure_data_dir()
+            payload = {
+                "x": int(x),
+                "y": int(y),
+                "width": int(width),
+                "height": int(height),
+            }
+            temp_file = self._window_file.with_suffix(".tmp")
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            temp_file.replace(self._window_file)
+        except Exception as e:
+            wx.LogError(f"Failed to save window geometry: {e}")
 
     def open_data_folder(self) -> None:
         """Open data folder in file manager."""

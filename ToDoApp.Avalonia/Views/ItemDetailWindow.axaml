@@ -1,0 +1,104 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ToDoApp.Avalonia.ViewModels"
+        xmlns:converters="using:ToDoApp.Avalonia.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="560"
+        x:Class="ToDoApp.Avalonia.Views.ItemDetailWindow"
+        x:DataType="vm:ItemDetailViewModel"
+        Title="アイテム詳細"
+        Width="520"
+        Height="560"
+        MinWidth="400"
+        MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        Opacity="0.95">
+    <Window.Resources>
+        <converters:DateTimeToDateTimeOffsetConverter x:Key="DateTimeToDateTimeOffsetConverter" />
+    </Window.Resources>
+    <Grid Margin="24" Background="White">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0"
+                   Margin="0,0,0,16"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Text="アイテムを編集" />
+        <ScrollViewer Grid.Row="1">
+            <StackPanel>
+                <TextBlock Margin="0,0,0,4"
+                           FontWeight="SemiBold"
+                           Text="タイトル *" />
+                <TextBox Margin="0,0,0,16"
+                         Padding="8,6"
+                         BorderBrush="#D1D5DB"
+                         BorderThickness="1"
+                         MaxLength="200"
+                         Text="{Binding EditingItem.Title, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" />
+                <TextBlock Margin="0,0,0,4"
+                           FontWeight="SemiBold"
+                           Text="説明" />
+                <TextBox MinHeight="60"
+                         Margin="0,0,0,16"
+                         Padding="8,6"
+                         AcceptsReturn="True"
+                         BorderBrush="#D1D5DB"
+                         BorderThickness="1"
+                         MaxLength="500"
+                         Text="{Binding EditingItem.Description, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
+                         TextWrapping="Wrap" />
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Margin="0,0,0,4"
+                                   FontWeight="SemiBold"
+                                   Text="ステータス" />
+                        <ComboBox Padding="8,6"
+                                  BorderBrush="#D1D5DB"
+                                  BorderThickness="1"
+                                  ItemsSource="{Binding StatusOptions}"
+                                  SelectedItem="{Binding EditingItem.Status}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock Margin="0,0,0,4"
+                                   FontWeight="SemiBold"
+                                   Text="優先度" />
+                        <ComboBox Padding="8,6"
+                                  BorderBrush="#D1D5DB"
+                                  BorderThickness="1"
+                                  ItemsSource="{Binding PriorityOptions}"
+                                  SelectedItem="{Binding EditingItem.Priority}" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock Margin="0,0,0,4"
+                           FontWeight="SemiBold"
+                           Text="期限" />
+                <DatePicker Margin="0,0,0,16"
+                            Padding="8,6"
+                            SelectedDate="{Binding EditingItem.DueDate, Converter={StaticResource DateTimeToDateTimeOffsetConverter}, TargetNullValue={x:Null}}" />
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="2"
+                    Margin="0,16,0,0"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+            <Button Margin="0,0,8,0"
+                    Padding="12,6"
+                    Command="{Binding CancelCommand}"
+                    Content="キャンセル" />
+            <Button Padding="12,6"
+                    Background="#2563EB"
+                    BorderThickness="0"
+                    Command="{Binding SaveCommand}"
+                    Content="保存"
+                    Foreground="White" />
+        </StackPanel>
+    </Grid>
+</Window>

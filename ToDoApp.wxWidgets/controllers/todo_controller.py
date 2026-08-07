@@ -1,4 +1,5 @@
 """Todo controller - business logic."""
+import sys
 from typing import List, Optional, Set, Callable
 from datetime import datetime
 
@@ -198,11 +199,38 @@ class TodoController:
         """Import data."""
         project_data = self._data_service.import_data(parent)
         if project_data:
-            self._items = project_data.items
-            self._selected_ids.clear()
-            self._notify()
+            self._apply_imported_data(project_data)
             return True
         return False
+
+    def import_from_path(self, path: str, parent=None) -> bool:
+        """Import data from a file path."""
+        project_data = self._data_service.import_from_path(path, parent=parent)
+        if project_data:
+            self._apply_imported_data(project_data)
+            return True
+        return False
+
+    def _apply_imported_data(self, project_data: ProjectData) -> None:
+        """Apply imported project data."""
+        self._items = project_data.items
+        self._selected_ids.clear()
+        self._notify()
+
+    def get_item_by_id(self, item_id: int) -> Optional[TodoItem]:
+        """Get item by id."""
+        for item in self._items:
+            if item.id == item_id:
+                return item
+        return None
+
+    def load_window_geometry(self) -> Optional[dict]:
+        """Load saved window geometry."""
+        return self._data_service.load_window_geometry()
+
+    def save_window_geometry(self, x: int, y: int, width: int, height: int) -> None:
+        """Save window geometry."""
+        self._data_service.save_window_geometry(x, y, width, height)
 
     def open_data_folder(self) -> None:
         """Open data folder."""

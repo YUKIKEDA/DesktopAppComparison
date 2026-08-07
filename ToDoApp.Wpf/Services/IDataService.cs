@@ -8,7 +8,9 @@ namespace ToDoApp.Wpf.Services
         Task SaveDataAsync(ProjectData data);
         Task ExportDataAsync(ProjectData data);
         Task<ProjectData?> ImportDataAsync();
+        Task<ProjectData?> ImportFromPathAsync(string path);
         Task OpenDataFolderAsync();
+        Task<WindowSettings?> LoadWindowSettingsAsync();
+        Task SaveWindowSettingsAsync(WindowSettings settings);
     }
 }
-

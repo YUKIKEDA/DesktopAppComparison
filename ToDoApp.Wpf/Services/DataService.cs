@@ -15,26 +15,44 @@ namespace ToDoApp.Wpf.Services
             "data"
         );
         private static readonly string DataFile = Path.Combine(DataDirectory, "project.json");
+        private static readonly string WindowFile = Path.Combine(DataDirectory, "window.json");
+
+        private static JsonSerializerOptions CreateReadOptions() => new()
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
+        };
+
+        private static JsonSerializerOptions CreateWriteOptions() => new()
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
+        };
+
+        private static void EnsureDataDirectory()
+        {
+            if (!Directory.Exists(DataDirectory))
+            {
+                Directory.CreateDirectory(DataDirectory);
+            }
+        }
+
+        private static ProjectData? DeserializeProjectData(string json)
+        {
+            return JsonSerializer.Deserialize<ProjectData>(json, CreateReadOptions());
+        }
 
         public async Task<ProjectData> LoadDataAsync()
         {
             try
             {
-                if (!Directory.Exists(DataDirectory))
-                {
-                    Directory.CreateDirectory(DataDirectory);
-                }
+                EnsureDataDirectory();
 
                 if (File.Exists(DataFile))
                 {
                     var json = await File.ReadAllTextAsync(DataFile);
-                    JsonSerializerOptions jsonSerializerOptions = new()
-                    {
-                        PropertyNameCaseInsensitive = true,
-                        Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
-                    };
-                    var options = jsonSerializerOptions;
-                    var data = JsonSerializer.Deserialize<ProjectData>(json, options);
+                    var data = DeserializeProjectData(json);
                     return data ?? new ProjectData();
                 }
             }
@@ -50,19 +68,9 @@ namespace ToDoApp.Wpf.Services
         {
             try
             {
-                if (!Directory.Exists(DataDirectory))
-                {
-                    Directory.CreateDirectory(DataDirectory);
-                }
+                EnsureDataDirectory();
 
-                JsonSerializerOptions jsonSerializerOptions = new()
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
-                };
-                var options = jsonSerializerOptions;
-                var json = JsonSerializer.Serialize(data, options);
+                var json = JsonSerializer.Serialize(data, CreateWriteOptions());
                 await File.WriteAllTextAsync(DataFile, json);
             }
             catch (Exception ex)
@@ -86,14 +94,7 @@ namespace ToDoApp.Wpf.Services
 
                 if (dialog.ShowDialog() == true)
                 {
-                    JsonSerializerOptions jsonSerializerOptions = new()
-                    {
-                        WriteIndented = true,
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
-                    };
-                    var options = jsonSerializerOptions;
-                    var json = JsonSerializer.Serialize(data, options);
+                    var json = JsonSerializer.Serialize(data, CreateWriteOptions());
                     await File.WriteAllTextAsync(dialog.FileName, json);
                 }
             }
@@ -116,15 +117,7 @@ namespace ToDoApp.Wpf.Services
 
                 if (dialog.ShowDialog() == true)
                 {
-                    var json = await File.ReadAllTextAsync(dialog.FileName);
-                    JsonSerializerOptions jsonSerializerOptions = new()
-                    {
-                        PropertyNameCaseInsensitive = true,
-                        Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
-                    };
-                    var options = jsonSerializerOptions;
-                    var data = JsonSerializer.Deserialize<ProjectData>(json, options);
-                    return data;
+                    return await ImportFromPathAsync(dialog.FileName);
                 }
             }
             catch (Exception ex)
@@ -135,14 +128,30 @@ namespace ToDoApp.Wpf.Services
             return null;
         }
 
+        public async Task<ProjectData?> ImportFromPathAsync(string path)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                {
+                    return null;
+                }
+
+                var json = await File.ReadAllTextAsync(path);
+                return DeserializeProjectData(json);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"インポートに失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+        }
+
         public Task OpenDataFolderAsync()
         {
             try
             {
-                if (!Directory.Exists(DataDirectory))
-                {
-                    Directory.CreateDirectory(DataDirectory);
-                }
+                EnsureDataDirectory();
 
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
@@ -157,6 +166,40 @@ namespace ToDoApp.Wpf.Services
 
             return Task.CompletedTask;
         }
+
+        public async Task<WindowSettings?> LoadWindowSettingsAsync()
+        {
+            try
+            {
+                EnsureDataDirectory();
+
+                if (!File.Exists(WindowFile))
+                {
+                    return null;
+                }
+
+                var json = await File.ReadAllTextAsync(WindowFile);
+                return JsonSerializer.Deserialize<WindowSettings>(json, CreateReadOptions());
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task SaveWindowSettingsAsync(WindowSettings settings)
+        {
+            try
+            {
+                EnsureDataDirectory();
+
+                var json = JsonSerializer.Serialize(settings, CreateWriteOptions());
+                await File.WriteAllTextAsync(WindowFile, json);
+            }
+            catch
+            {
+                // ウィンドウ位置の保存失敗は致命的ではないため無視
+            }
+        }
     }
 }
-

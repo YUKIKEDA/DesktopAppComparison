@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTodoStore } from "./store/useTodoStore";
 import { DataService } from "./lib/dataService";
 import { Toolbar } from "./components/Toolbar";
@@ -6,13 +6,24 @@ import { FilterBar } from "./components/FilterBar";
 import { TodoTable } from "./components/TodoTable";
 import { Dialog } from "./components/ui/Dialog";
 import { TodoForm } from "./components/TodoForm";
+import { DetailWindow } from "./components/DetailWindow";
 import type { TodoItem } from "./types";
 import "./App.css";
 
-function App() {
+function getDetailItemId(): number | null {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("itemId");
+  if (!raw) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) ? id : null;
+}
+
+function MainApp() {
   const { items, setItems, setLoading, addItem, updateItem } = useTodoStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<TodoItem | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const skipSaveRef = useRef(false);
 
   const handleEdit = (item: TodoItem | null) => {
     setEditingItem(item);
@@ -44,12 +55,52 @@ function App() {
     setEditingItem(null);
   };
 
+  const applyImportedData = useCallback(
+    async (data: { items: TodoItem[] } | null) => {
+      if (!data) return;
+      setItems(data.items);
+      await DataService.saveData({ items: data.items });
+    },
+    [setItems]
+  );
+
+  const handleDropFiles = useCallback(
+    async (files: FileList | File[]) => {
+      const list = Array.from(files);
+      const jsonFile = list.find((f) =>
+        f.name.toLowerCase().endsWith(".json")
+      );
+      if (!jsonFile) return;
+
+      let filePath = "";
+      if (window.electronAPI?.getPathForFile) {
+        filePath = window.electronAPI.getPathForFile(jsonFile);
+      }
+      if (!filePath) {
+        filePath = (jsonFile as File & { path?: string }).path ?? "";
+      }
+      if (!filePath) {
+        console.error("Could not resolve dropped file path");
+        return;
+      }
+
+      try {
+        const data = await DataService.importFromPath(filePath);
+        await applyImportedData(data);
+      } catch (error) {
+        console.error("Drop import failed:", error);
+      }
+    },
+    [applyImportedData]
+  );
+
   // Load data on mount
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
         const data = await DataService.loadData();
+        skipSaveRef.current = true;
         setItems(data.items);
       } catch (error) {
         console.error("Failed to load data:", error);
@@ -57,11 +108,29 @@ function App() {
         setLoading(false);
       }
     };
-    loadData();
+    void loadData();
   }, [setItems, setLoading]);
+
+  // Sync when another window saves
+  useEffect(() => {
+    if (!window.electronAPI?.onDataChanged) return;
+    return window.electronAPI.onDataChanged(async () => {
+      try {
+        const data = await DataService.loadData();
+        skipSaveRef.current = true;
+        setItems(data.items);
+      } catch (error) {
+        console.error("Failed to reload data:", error);
+      }
+    });
+  }, [setItems]);
 
   // Auto-save with debounce
   useEffect(() => {
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
     if (items.length === 0) return;
 
     const timeoutId = setTimeout(async () => {
@@ -70,7 +139,7 @@ function App() {
       } catch (error) {
         console.error("Failed to save data:", error);
       }
-    }, 2000); // 2 seconds debounce
+    }, 2000);
 
     return () => clearTimeout(timeoutId);
   }, [items]);
@@ -89,7 +158,32 @@ function App() {
   }, [items]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div
+      className={`h-screen flex flex-col bg-gray-50 ${
+        isDragOver ? "ring-2 ring-inset ring-blue-400" : ""
+      }`}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(true);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget === e.target) setIsDragOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+        void handleDropFiles(e.dataTransfer.files);
+      }}
+    >
       <Toolbar onEditItem={handleEdit} />
       <FilterBar />
       <div className="flex-1 overflow-hidden">
@@ -111,6 +205,14 @@ function App() {
       </Dialog>
     </div>
   );
+}
+
+function App() {
+  const detailItemId = getDetailItemId();
+  if (detailItemId != null) {
+    return <DetailWindow itemId={detailItemId} />;
+  }
+  return <MainApp />;
 }
 
 export default App;

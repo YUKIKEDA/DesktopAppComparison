@@ -247,8 +247,7 @@ class TodoViewModel(private val dataService: IDataService) : ViewModel() {
             try {
                 val result = dataService.importData()
                 result.onSuccess { data ->
-                    _items.value = data.items
-                    saveData()
+                    applyImportedData(data)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -257,6 +256,30 @@ class TodoViewModel(private val dataService: IDataService) : ViewModel() {
             }
         }
     }
+
+    fun importFromPath(path: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val result = dataService.importFromPath(path)
+                result.onSuccess { data ->
+                    applyImportedData(data)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    private fun applyImportedData(data: ProjectData) {
+        _items.value = data.items
+        _selectedIds.value = emptySet()
+        saveData()
+    }
+
+    fun getItemById(id: Int): TodoItem? = _items.value.find { it.id == id }
 
     fun openDataFolder() {
         viewModelScope.launch {

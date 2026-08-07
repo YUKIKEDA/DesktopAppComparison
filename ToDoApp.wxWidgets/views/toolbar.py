@@ -9,9 +9,14 @@ class Toolbar(wx.Panel):
     def __init__(self, parent, controller: TodoController):
         super().__init__(parent)
         self.controller = controller
+        self._on_open_in_new_window = None
 
         self._create_ui()
         self._bind_events()
+
+    def set_on_open_in_new_window(self, callback) -> None:
+        """Set callback for opening selected item in a new window."""
+        self._on_open_in_new_window = callback
 
     def _create_ui(self) -> None:
         """Create toolbar UI."""
@@ -25,6 +30,11 @@ class Toolbar(wx.Panel):
         self.delete_btn = wx.Button(self, label="削除 (0)")
         self.delete_btn.Enable(False)
         sizer.Add(self.delete_btn, flag=wx.ALL, border=5)
+
+        # Open in new window button
+        self.open_window_btn = wx.Button(self, label="別ウィンドウで開く")
+        self.open_window_btn.Enable(False)
+        sizer.Add(self.open_window_btn, flag=wx.ALL, border=5)
 
         # Spacer
         sizer.AddStretchSpacer()
@@ -47,6 +57,7 @@ class Toolbar(wx.Panel):
         """Bind events."""
         self.add_btn.Bind(wx.EVT_BUTTON, self._on_add)
         self.delete_btn.Bind(wx.EVT_BUTTON, self._on_delete)
+        self.open_window_btn.Bind(wx.EVT_BUTTON, self._on_open_window)
         self.export_btn.Bind(wx.EVT_BUTTON, self._on_export)
         self.import_btn.Bind(wx.EVT_BUTTON, self._on_import)
         self.open_folder_btn.Bind(wx.EVT_BUTTON, self._on_open_folder)
@@ -76,6 +87,11 @@ class Toolbar(wx.Panel):
 
         dlg.Destroy()
 
+    def _on_open_window(self, event: wx.CommandEvent) -> None:
+        """Handle open-in-new-window button click."""
+        if self._on_open_in_new_window:
+            self._on_open_in_new_window()
+
     def _on_export(self, event: wx.CommandEvent) -> None:
         """Handle export button click."""
         self.controller.export_data(self)
@@ -100,4 +116,4 @@ class Toolbar(wx.Panel):
         """Update selection count display."""
         self.delete_btn.SetLabel(f"削除 ({count})")
         self.delete_btn.Enable(count > 0)
-
+        self.open_window_btn.Enable(count == 1)

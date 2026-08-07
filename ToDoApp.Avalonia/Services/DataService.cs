@@ -11,39 +11,50 @@ namespace ToDoApp.Avalonia.Services;
 
 public class DataService : IDataService
 {
-    private static readonly string DataDirectory = Path.Combine(
+    private static readonly string AppDataDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "ToDoApp.Avalonia",
         "data"
     );
-    private static readonly string DataFile = Path.Combine(DataDirectory, "project.json");
+    private static readonly string DataFile = Path.Combine(AppDataDirectory, "project.json");
+    private static readonly string WindowSettingsFile = Path.Combine(AppDataDirectory, "window.json");
 
     private readonly Window? _window;
+
+    public string DataDirectory => AppDataDirectory;
+    public string WindowSettingsPath => WindowSettingsFile;
 
     public DataService(Window? window = null)
     {
         _window = window;
     }
 
+    private static JsonSerializerOptions CreateReadOptions() => new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
+    };
+
+    private static JsonSerializerOptions CreateWriteOptions() => new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
+    };
+
     public async Task<ProjectData> LoadDataAsync()
     {
         try
         {
-            if (!Directory.Exists(DataDirectory))
+            if (!Directory.Exists(AppDataDirectory))
             {
-                Directory.CreateDirectory(DataDirectory);
+                Directory.CreateDirectory(AppDataDirectory);
             }
 
             if (File.Exists(DataFile))
             {
                 var json = await File.ReadAllTextAsync(DataFile);
-                JsonSerializerOptions jsonSerializerOptions = new()
-                {
-                    PropertyNameCaseInsensitive = true,
-                    Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
-                };
-                var options = jsonSerializerOptions;
-                var data = JsonSerializer.Deserialize<ProjectData>(json, options);
+                var data = JsonSerializer.Deserialize<ProjectData>(json, CreateReadOptions());
                 return data ?? new ProjectData();
             }
         }
@@ -59,19 +70,12 @@ public class DataService : IDataService
     {
         try
         {
-            if (!Directory.Exists(DataDirectory))
+            if (!Directory.Exists(AppDataDirectory))
             {
-                Directory.CreateDirectory(DataDirectory);
+                Directory.CreateDirectory(AppDataDirectory);
             }
 
-            JsonSerializerOptions jsonSerializerOptions = new()
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
-            };
-            var options = jsonSerializerOptions;
-            var json = JsonSerializer.Serialize(data, options);
+            var json = JsonSerializer.Serialize(data, CreateWriteOptions());
             await File.WriteAllTextAsync(DataFile, json);
         }
         catch (Exception ex)
@@ -105,14 +109,7 @@ public class DataService : IDataService
 
             if (file != null)
             {
-                JsonSerializerOptions jsonSerializerOptions = new()
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
-                };
-                var options = jsonSerializerOptions;
-                var json = JsonSerializer.Serialize(data, options);
+                var json = JsonSerializer.Serialize(data, CreateWriteOptions());
                 await using var stream = await file.OpenWriteAsync();
                 await using var writer = new StreamWriter(stream);
                 await writer.WriteAsync(json);
@@ -148,17 +145,16 @@ public class DataService : IDataService
 
             if (files.Count > 0 && files[0] != null)
             {
+                var path = files[0].TryGetLocalPath();
+                if (!string.IsNullOrEmpty(path))
+                {
+                    return await ImportFromPathAsync(path);
+                }
+
                 await using var stream = await files[0].OpenReadAsync();
                 using var reader = new StreamReader(stream);
                 var json = await reader.ReadToEndAsync();
-                JsonSerializerOptions jsonSerializerOptions = new()
-                {
-                    PropertyNameCaseInsensitive = true,
-                    Converters = { new JsonStringEnumConverter(), new DateTimeConverter(), new NullableDateTimeConverter() }
-                };
-                var options = jsonSerializerOptions;
-                var data = JsonSerializer.Deserialize<ProjectData>(json, options);
-                return data;
+                return DeserializeProjectData(json);
             }
         }
         catch (Exception ex)
@@ -169,18 +165,43 @@ public class DataService : IDataService
         return null;
     }
 
+    public async Task<ProjectData?> ImportFromPathAsync(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                await ShowErrorAsync("インポートするファイルが見つかりません。");
+                return null;
+            }
+
+            var json = await File.ReadAllTextAsync(path);
+            return DeserializeProjectData(json);
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync($"インポートに失敗しました: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static ProjectData? DeserializeProjectData(string json)
+    {
+        return JsonSerializer.Deserialize<ProjectData>(json, CreateReadOptions());
+    }
+
     public async Task OpenDataFolderAsync()
     {
         try
         {
-            if (!Directory.Exists(DataDirectory))
+            if (!Directory.Exists(AppDataDirectory))
             {
-                Directory.CreateDirectory(DataDirectory);
+                Directory.CreateDirectory(AppDataDirectory);
             }
 
             var processStartInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = DataDirectory,
+                FileName = AppDataDirectory,
                 UseShellExecute = true
             };
             System.Diagnostics.Process.Start(processStartInfo);
@@ -198,4 +219,3 @@ public class DataService : IDataService
         await Views.MessageDialog.ShowAsync(_window, "エラー", message);
     }
 }
-

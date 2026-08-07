@@ -68,6 +68,16 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
     }
   };
 
+  const handleOpenDetailWindow = async () => {
+    if (selectedIds.size !== 1) return;
+    const itemId = Array.from(selectedIds)[0];
+    try {
+      await DataService.openDetailWindow(itemId);
+    } catch (error) {
+      console.error("Failed to open detail window:", error);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -104,6 +114,13 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
           disabled={selectedIds.size === 0}
         >
           削除 ({selectedIds.size})
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleOpenDetailWindow}
+          disabled={selectedIds.size !== 1}
+        >
+          別ウィンドウで開く
         </Button>
         <div className="flex-1" />
         <Button variant="outline" onClick={handleExport}>

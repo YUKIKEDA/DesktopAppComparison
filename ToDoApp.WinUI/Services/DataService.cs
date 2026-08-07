@@ -19,13 +19,15 @@ namespace ToDoApp.WinUI.Services
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase // Electronアプリとの互換性のためcamelCaseを使用
         };
 
-        private string GetDataFilePath()
+        public string GetDataDirectory()
         {
             var localFolder = ApplicationData.Current.LocalFolder.Path;
             var dataFolder = Path.Combine(localFolder, "Data");
             Directory.CreateDirectory(dataFolder);
-            return Path.Combine(dataFolder, DataFileName);
+            return dataFolder;
         }
+
+        private string GetDataFilePath() => Path.Combine(GetDataDirectory(), DataFileName);
 
         public async Task<ProjectData> LoadDataAsync()
         {
@@ -112,14 +114,27 @@ namespace ToDoApp.WinUI.Services
                 var file = await picker.PickSingleFileAsync();
                 if (file != null)
                 {
-                    var json = await FileIO.ReadTextAsync(file);
-                    var data = JsonSerializer.Deserialize<ProjectData>(json, JsonOptions);
-                    return data;
+                    return await ImportFromPathAsync(file.Path);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error importing data: {ex.Message}");
+            }
+
+            return null;
+        }
+
+        public async Task<ProjectData?> ImportFromPathAsync(string path)
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(path);
+                return JsonSerializer.Deserialize<ProjectData>(json, JsonOptions);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error importing from path: {ex.Message}");
             }
 
             return null;

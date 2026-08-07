@@ -347,20 +347,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### ウィンドウ機能
 
-| Framework             | Multi-window | Resize | Position memory | Drag & drop | Transparency | Notes                        |
-| --------------------- | ------------ | ------ | --------------- | ----------- | ------------ | ---------------------------- |
-| Avalonia              | N            | Y      | N               | N           | N            |                              |
-| Compose Multiplatform | N            | Y      | N               | N           | N            |                              |
-| Electron              | N            | Y      | N               | N           | N            |                              |
-| Flutter               | N            | Y      | N               | N           | N            |                              |
-| GPUI                  | -            | -      | -               | -           | -            | Excluded (no file picker)    |
-| MAUI                  | -            | -      | -               | -           | -            | Excluded (WinUI3 wrapper)    |
-| React Native          | -            | -      | -               | -           | -            | Excluded (insufficient info) |
-| Tauri                 | N            | Y      | N               | N           | N            |                              |
-| WinForms              | -            | -      | -               | -           | -            | Excluded (limited UI)        |
-| WPF                   | N            | Y      | N               | N           | N            |                              |
-| WinUI3                | N            | Y      | N               | N           | Y            | MicaBackdrop                 |
-| wxWidgets             | N            | Y      | N               | N           | N            |                              |
+| Framework             | Multi-window | Resize | Position memory | Drag & drop | Transparency | Notes                                                 |
+| --------------------- | ------------ | ------ | --------------- | ----------- | ------------ | ----------------------------------------------------- |
+| Avalonia              | Y            | Y      | Y               | Y           | Y            |                                                       |
+| Compose Multiplatform | Y            | Y      | Y               | Y           | P            | FW: limited window transparency on Compose Desktop    |
+| Electron              | Y            | Y      | Y               | Y           | Y            |                                                       |
+| Flutter               | N            | Y      | Y               | Y           | P            | FW: no first-class multi-window; transparency limited |
+| GPUI                  | -            | -      | -               | -           | -            | Excluded (no file picker)                             |
+| MAUI                  | -            | -      | -               | -           | -            | Excluded (WinUI3 wrapper)                             |
+| React Native          | -            | -      | -               | -           | -            | Excluded (insufficient info)                          |
+| Tauri                 | Y            | Y      | Y               | Y           | Y            |                                                       |
+| WinForms              | -            | -      | -               | -           | -            | Excluded (limited UI)                                 |
+| WPF                   | Y            | Y      | Y               | Y           | Y            |                                                       |
+| WinUI3                | Y            | Y      | Y               | Y           | Y            | MicaBackdrop                                          |
+| wxWidgets             | Y            | Y      | Y               | Y           | Y            |                                                       |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -374,10 +374,11 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 **凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
 
 **Notes**:
-- 本リポジトリの各アプリ実装に基づく判定（フレームワーク一般の能力は含めない）
-- Multi-window: モーダルダイアログは含めない
-- Resize: リサイズ無効化がなければ OS 標準のリサイズ可を `Y`
-- Transparency: WinUI3 のみ `MicaBackdrop` を使用
+- 各アプリ実装に基づく判定。`N`/`P` で `FW:` とあるものはフレームワーク制約
+- Multi-window: 選択1件を独立ウィンドウで開く（モーダルは含めない）。Flutter は第一級 API がなく未実装
+- Position memory: `window.json` に位置・サイズを保存し起動時復元
+- Drag & drop: `.json` ドロップでインポート（既存 Import とパース共有）
+- Transparency: Opacity 約 0.95 またはシステム背景（WinUI3 は Mica）。Compose / Flutter は OS・装飾付き窓での透過が限定的なため `P`
 
 #### UI機能
 

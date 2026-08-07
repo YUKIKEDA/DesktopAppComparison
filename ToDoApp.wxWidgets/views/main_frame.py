@@ -8,7 +8,22 @@ from views.toolbar import Toolbar
 from views.filter_bar import FilterBar
 from views.todo_table import TodoTable
 from views.todo_form_dialog import TodoFormDialog
+from views.detail_frame import TodoDetailFrame
 from models.todo_item import TodoItem
+
+
+class JsonFileDropTarget(wx.FileDropTarget):
+    """Accept dropped .json files for import."""
+
+    def __init__(self, callback):
+        super().__init__()
+        self._callback = callback
+
+    def OnDropFiles(self, x, y, filenames):
+        for path in filenames:
+            if str(path).lower().endswith(".json"):
+                self._callback(path)
+        return True
 
 
 class MainFrame(wx.Frame):
@@ -28,7 +43,9 @@ class MainFrame(wx.Frame):
             print("MainFrame.__init__: Creating controller...")
             self.controller = TodoController()
             print("MainFrame.__init__: Controller created")
-            
+
+            self._detail_frames = {}
+
             print("MainFrame.__init__: Adding callback...")
             self.controller.add_callback(self._on_data_changed)
             print("MainFrame.__init__: Callback added")
@@ -47,6 +64,18 @@ class MainFrame(wx.Frame):
             self._bind_events()
             print("MainFrame.__init__: Events bound")
 
+            print("MainFrame.__init__: Restoring window geometry...")
+            self._restore_window_geometry()
+            print("MainFrame.__init__: Window geometry restored")
+
+            print("MainFrame.__init__: Applying transparency...")
+            self._apply_transparency()
+            print("MainFrame.__init__: Transparency applied")
+
+            print("MainFrame.__init__: Setting up drag and drop...")
+            self.SetDropTarget(JsonFileDropTarget(self._on_drop_json))
+            print("MainFrame.__init__: Drag and drop set up")
+
             print("MainFrame.__init__: Loading data...")
             self._load_data()
             print("MainFrame.__init__: Data loaded")
@@ -55,7 +84,7 @@ class MainFrame(wx.Frame):
             # Setup accelerators for keyboard shortcuts
             self._setup_accelerators()
             print("MainFrame.__init__: Accelerators set up")
-            
+
             print("MainFrame.__init__: Initialization complete")
         except Exception as e:
             import traceback
@@ -82,6 +111,7 @@ class MainFrame(wx.Frame):
             print("_create_ui: Creating toolbar...")
             # Toolbar
             self.toolbar = Toolbar(panel, self.controller)
+            self.toolbar.set_on_open_in_new_window(self._on_open_in_new_window)
             main_sizer.Add(self.toolbar, flag=wx.EXPAND)
             print("_create_ui: Toolbar created")
 
@@ -122,6 +152,36 @@ class MainFrame(wx.Frame):
 
         # Window close
         self.Bind(wx.EVT_CLOSE, self._on_close)
+
+    def _restore_window_geometry(self) -> None:
+        """Restore window position and size from window.json."""
+        geometry = self.controller.load_window_geometry()
+        if not geometry:
+            return
+
+        width = geometry["width"]
+        height = geometry["height"]
+        x = geometry["x"]
+        y = geometry["y"]
+
+        display = wx.Display.GetFromWindow(self)
+        if display == wx.NOT_FOUND:
+            display = 0
+        client_area = wx.Display(display).GetClientArea()
+        rect = wx.Rect(x, y, width, height)
+        if not client_area.Intersects(rect):
+            return
+
+        self.SetSize(width, height)
+        self.SetPosition((x, y))
+
+    def _apply_transparency(self) -> None:
+        """Apply slight window transparency (~0.95)."""
+        try:
+            if self.CanSetTransparent():
+                self.SetTransparent(242)
+        except Exception as e:
+            print(f"Transparency not applied: {e}", file=sys.stderr)
 
     def _setup_accelerators(self) -> None:
         """Setup keyboard accelerators."""
@@ -174,7 +234,9 @@ class MainFrame(wx.Frame):
             selected_count = len(self.controller.get_selected_ids())
             self.toolbar.update_selection_count(selected_count)
             print("_on_data_changed: Selection count updated")
-            
+
+            self._sync_detail_frames()
+
             # Schedule auto-save (restart timer with debounce)
             self._auto_save_timer.Stop()
             self._auto_save_timer.StartOnce(2000)  # 2 seconds in milliseconds
@@ -186,6 +248,22 @@ class MainFrame(wx.Frame):
                 wx.LogError(error_msg)
             except:
                 pass
+
+    def _sync_detail_frames(self) -> None:
+        """Close detail frames whose items were deleted."""
+        closed_ids = []
+        for item_id, frame in list(self._detail_frames.items()):
+            if not frame:
+                closed_ids.append(item_id)
+                continue
+            if self.controller.get_item_by_id(item_id) is None:
+                try:
+                    frame.Destroy()
+                except Exception:
+                    pass
+                closed_ids.append(item_id)
+        for item_id in closed_ids:
+            self._detail_frames.pop(item_id, None)
 
     def _on_auto_save_timer(self, event: wx.TimerEvent) -> None:
         """Handle auto-save timer."""
@@ -263,6 +341,55 @@ class MainFrame(wx.Frame):
                     )
         dlg.Destroy()
 
+    def _on_open_in_new_window(self) -> None:
+        """Open the single selected item in a real secondary Frame."""
+        selected_ids = list(self.controller.get_selected_ids())
+        if len(selected_ids) != 1:
+            return
+
+        item_id = selected_ids[0]
+        existing = self._detail_frames.get(item_id)
+        if existing:
+            existing.Raise()
+            existing.SetFocus()
+            return
+
+        item = self.controller.get_item_by_id(item_id)
+        if item is None:
+            return
+
+        def on_save(saved_id: int, updates: dict) -> None:
+            try:
+                self.controller.update_item(saved_id, updates)
+                self.controller.save_data()
+            except Exception as e:
+                wx.MessageBox(
+                    f"アイテムの更新に失敗しました: {e}",
+                    "エラー",
+                    wx.OK | wx.ICON_ERROR,
+                    self
+                )
+
+        def on_close() -> None:
+            self._detail_frames.pop(item_id, None)
+
+        frame = TodoDetailFrame(self, item, on_save=on_save, on_close=on_close)
+        self._detail_frames[item_id] = frame
+        frame.Show()
+
+    def _on_drop_json(self, path: str) -> None:
+        """Import dropped JSON file."""
+        try:
+            if self.controller.import_from_path(path, parent=self):
+                self.controller.save_data()
+                self.SetStatusText(f"インポートしました: {path}")
+        except Exception as e:
+            wx.MessageBox(
+                f"インポートに失敗しました: {e}",
+                "エラー",
+                wx.OK | wx.ICON_ERROR
+            )
+
     def _on_filter_change(self, event: wx.Event) -> None:
         """Handle filter change."""
         self._refresh_table()
@@ -290,12 +417,27 @@ class MainFrame(wx.Frame):
         """Handle window close."""
         # Stop auto-save timer
         self._auto_save_timer.Stop()
-        
+
+        # Persist window geometry
+        try:
+            size = self.GetSize()
+            pos = self.GetPosition()
+            self.controller.save_window_geometry(pos.x, pos.y, size.width, size.height)
+        except Exception as e:
+            wx.LogError(f"Save window geometry failed: {e}")
+
         # Save on close
         try:
             self.controller.save_data()
         except Exception as e:
             wx.LogError(f"Save on close failed: {e}")
-        
-        event.Skip()
 
+        # Close detail frames
+        for frame in list(self._detail_frames.values()):
+            try:
+                frame.Destroy()
+            except Exception:
+                pass
+        self._detail_frames.clear()
+
+        event.Skip()

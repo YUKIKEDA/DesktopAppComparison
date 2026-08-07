@@ -14,6 +14,7 @@ fun Toolbar(
     onExportClick: () -> Unit,
     onImportClick: () -> Unit,
     onOpenDataFolderClick: () -> Unit,
+    onOpenInNewWindowClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -40,6 +41,15 @@ fun Toolbar(
                 )
             ) {
                 Text("削除 ($selectedCount)")
+            }
+
+            if (onOpenInNewWindowClick != null) {
+                OutlinedButton(
+                    onClick = onOpenInNewWindowClick,
+                    enabled = selectedCount == 1
+                ) {
+                    Text("別ウィンドウで開く")
+                }
             }
             
             Spacer(modifier = Modifier.weight(1f))

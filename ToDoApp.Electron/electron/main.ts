@@ -1,14 +1,22 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, shell, screen } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
-import type { ProjectData } from "../src/types/index";
+import type { ProjectData, TodoItem } from "../src/types/index";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Data directory
 const DATA_DIR = path.join(app.getPath("userData"), "data");
 const DATA_FILE = path.join(DATA_DIR, "project.json");
+const WINDOW_FILE = path.join(DATA_DIR, "window.json");
+
+interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 // The built directory structure
 //
@@ -19,16 +27,131 @@ const DATA_FILE = path.join(DATA_DIR, "project.json");
 // │ │ ├── main.js
 // │ │ └── preload.mjs
 // │
-process.env.APP_ROOT = path.join(__dirname, '..')
+process.env.APP_ROOT = path.join(__dirname, "..");
 
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
-export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
+export const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+export const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
+  ? path.join(process.env.APP_ROOT, "public")
+  : RENDERER_DIST;
 
-let win: BrowserWindow | null
+let win: BrowserWindow | null = null;
+
+function parseProjectData(content: string): ProjectData {
+  const data = JSON.parse(content);
+  if (!data || !Array.isArray(data.items)) {
+    throw new Error("Invalid project data: missing items array");
+  }
+  return {
+    items: data.items.map(
+      (item: Record<string, unknown>): TodoItem => ({
+        id: Number(item.id),
+        title: String(item.title ?? ""),
+        description: String(item.description ?? ""),
+        status: (item.status as TodoItem["status"]) ?? "未着手",
+        priority: (item.priority as TodoItem["priority"]) ?? "中",
+        dueDate: (item.dueDate as string | null) ?? (item.due_date as string | null) ?? null,
+        createdAt: String(item.createdAt ?? item.created_at ?? new Date().toISOString()),
+        updatedAt: String(item.updatedAt ?? item.updated_at ?? new Date().toISOString()),
+        isCompleted: Boolean(item.isCompleted ?? item.is_completed ?? false),
+      })
+    ),
+  };
+}
+
+async function importFromPath(filePath: string): Promise<ProjectData | null> {
+  try {
+    const content = await fs.readFile(filePath, "utf-8");
+    return parseProjectData(content);
+  } catch (error) {
+    console.error("Error importing from path:", error);
+    return null;
+  }
+}
+
+async function loadWindowBounds(): Promise<WindowBounds | null> {
+  try {
+    const content = await fs.readFile(WINDOW_FILE, "utf-8");
+    const bounds = JSON.parse(content) as WindowBounds;
+    if (
+      typeof bounds.x === "number" &&
+      typeof bounds.y === "number" &&
+      typeof bounds.width === "number" &&
+      typeof bounds.height === "number"
+    ) {
+      return bounds;
+    }
+  } catch {
+    // no saved bounds
+  }
+  return null;
+}
+
+async function saveWindowBounds(bounds: WindowBounds): Promise<void> {
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(WINDOW_FILE, JSON.stringify(bounds, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Error saving window bounds:", error);
+  }
+}
+
+function isBoundsOnScreen(bounds: WindowBounds): boolean {
+  const displays = screen.getAllDisplays();
+  return displays.some((display) => {
+    const a = display.workArea;
+    return (
+      bounds.x + bounds.width > a.x &&
+      bounds.x < a.x + a.width &&
+      bounds.y + bounds.height > a.y &&
+      bounds.y < a.y + a.height
+    );
+  });
+}
+
+function loadRenderer(target: BrowserWindow, query?: Record<string, string>) {
+  if (VITE_DEV_SERVER_URL) {
+    const url = new URL(VITE_DEV_SERVER_URL);
+    if (query) {
+      for (const [key, value] of Object.entries(query)) {
+        url.searchParams.set(key, value);
+      }
+    }
+    target.loadURL(url.toString());
+  } else {
+    target.loadFile(path.join(RENDERER_DIST, "index.html"), {
+      query: query ?? {},
+    });
+  }
+}
+
+function broadcastDataChanged() {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send("data:changed");
+  }
+}
+
+function createDetailWindow(itemId: number) {
+  const detailWin = new BrowserWindow({
+    width: 520,
+    height: 640,
+    minWidth: 400,
+    minHeight: 480,
+    title: "アイテム詳細",
+    opacity: 0.95,
+    icon: path.join(process.env.VITE_PUBLIC!, "electron-vite.svg"),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.mjs"),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  loadRenderer(detailWin, { itemId: String(itemId) });
+}
 
 // IPC Handlers
 async function setupIpcHandlers() {
@@ -38,7 +161,7 @@ async function setupIpcHandlers() {
       await fs.mkdir(DATA_DIR, { recursive: true });
       const data = await fs.readFile(DATA_FILE, "utf-8").catch(() => null);
       if (data) {
-        return JSON.parse(data);
+        return parseProjectData(data);
       }
       return { items: [] };
     } catch (error) {
@@ -54,6 +177,7 @@ async function setupIpcHandlers() {
       try {
         await fs.mkdir(DATA_DIR, { recursive: true });
         await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+        broadcastDataChanged();
       } catch (error) {
         console.error("Error saving data:", error);
         throw error;
@@ -84,7 +208,7 @@ async function setupIpcHandlers() {
     }
   );
 
-  // Import data
+  // Import data (file dialog)
   ipcMain.handle("data:import", async (): Promise<ProjectData | null> => {
     const result = await dialog.showOpenDialog(win!, {
       title: "データをインポート",
@@ -96,21 +220,25 @@ async function setupIpcHandlers() {
     });
 
     if (!result.canceled && result.filePaths.length > 0) {
-      try {
-        const data = await fs.readFile(result.filePaths[0], "utf-8");
-        return JSON.parse(data);
-      } catch (error) {
-        console.error("Error importing data:", error);
-        return null;
-      }
+      return importFromPath(result.filePaths[0]);
     }
     return null;
   });
 
+  // Import from explicit path (shared parse with data:import)
+  ipcMain.handle(
+    "data:importFromPath",
+    async (_event, filePath: string): Promise<ProjectData | null> => {
+      if (!filePath || typeof filePath !== "string") {
+        return null;
+      }
+      return importFromPath(filePath);
+    }
+  );
+
   // Open data folder
   ipcMain.handle("data:openFolder", async (): Promise<void> => {
     try {
-      // フォルダが存在しない場合は作成
       await fs.mkdir(DATA_DIR, { recursive: true });
       await shell.openPath(DATA_DIR);
     } catch (error) {
@@ -118,49 +246,76 @@ async function setupIpcHandlers() {
       throw error;
     }
   });
+
+  // Open detail window for a single item
+  ipcMain.handle(
+    "window:openDetail",
+    async (_event, itemId: number): Promise<void> => {
+      createDetailWindow(itemId);
+    }
+  );
 }
 
-function createWindow() {
-  win = new BrowserWindow({
-    width: 1400,
-    height: 900,
+async function createWindow() {
+  const saved = await loadWindowBounds();
+  const defaults = { width: 1400, height: 900, x: undefined as number | undefined, y: undefined as number | undefined };
+  const options: Electron.BrowserWindowConstructorOptions = {
+    width: defaults.width,
+    height: defaults.height,
     minWidth: 800,
     minHeight: 600,
-    title: 'Todo App',
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    title: "Todo App",
+    opacity: 0.95,
+    icon: path.join(process.env.VITE_PUBLIC!, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
     },
-  })
+  };
 
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
-  } else {
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+  if (saved && isBoundsOnScreen(saved)) {
+    options.x = saved.x;
+    options.y = saved.y;
+    options.width = Math.max(saved.width, 800);
+    options.height = Math.max(saved.height, 600);
   }
+
+  win = new BrowserWindow(options);
+
+  win.on("close", () => {
+    if (!win) return;
+    const bounds = win.getBounds();
+    void saveWindowBounds({
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+    });
+  });
+
+  loadRenderer(win);
 }
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-    win = null
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+    win = null;
   }
-})
+});
 
-app.on('activate', () => {
+app.on("activate", () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    void createWindow();
   }
-})
+});
 
 app.whenReady().then(() => {
-  setupIpcHandlers()
-  createWindow()
-})
+  setupIpcHandlers();
+  void createWindow();
+});

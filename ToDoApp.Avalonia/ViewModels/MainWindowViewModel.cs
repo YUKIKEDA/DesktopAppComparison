@@ -30,12 +30,16 @@ namespace ToDoApp.Avalonia.ViewModels;
 
     public int SelectedCount => SelectedIds.Count;
 
+    public bool CanOpenInNewWindow => SelectedCount == 1;
+
     private void NotifySelectedCountChanged()
     {
         // HashSetの内容変更を検知させるため、新しいインスタンスを作成
         var newSet = new HashSet<int>(SelectedIds);
         SelectedIds = newSet;
         OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(CanOpenInNewWindow));
+        OpenInNewWindowCommand.NotifyCanExecuteChanged();
         UpdateAllFilteredSelected();
     }
 
@@ -439,18 +443,95 @@ namespace ToDoApp.Avalonia.ViewModels;
             var data = await _dataService.ImportDataAsync();
             if (data != null)
             {
-                Items.Clear();
-                foreach (var item in data.Items)
-                {
-                    Items.Add(item);
-                }
-                ApplyFilters();
-                await SaveDataAsync();
+                await ApplyImportedDataAsync(data);
             }
         }
         catch (Exception)
         {
             // エラーはDataServiceで表示される
+        }
+    }
+
+    public async Task ImportFromPathAsync(string path)
+    {
+        try
+        {
+            var data = await _dataService.ImportFromPathAsync(path);
+            if (data != null)
+            {
+                await ApplyImportedDataAsync(data);
+            }
+        }
+        catch (Exception)
+        {
+            // エラーはDataServiceで表示される
+        }
+    }
+
+    private async Task ApplyImportedDataAsync(ProjectData data)
+    {
+        Items.Clear();
+        foreach (var item in data.Items)
+        {
+            Items.Add(item);
+        }
+        SelectedIds.Clear();
+        NotifySelectedCountChanged();
+        ApplyFilters();
+        await SaveDataAsync();
+    }
+
+    public async Task ApplyItemUpdateAsync(TodoItem editingItem)
+    {
+        var existingItem = Items.FirstOrDefault(i => i.Id == editingItem.Id);
+        if (existingItem == null)
+        {
+            return;
+        }
+
+        var index = Items.IndexOf(existingItem);
+        Items.RemoveAt(index);
+
+        var updatedItem = new TodoItem
+        {
+            Id = editingItem.Id,
+            Title = editingItem.Title,
+            Description = editingItem.Description ?? string.Empty,
+            Status = editingItem.Status,
+            Priority = editingItem.Priority,
+            DueDate = editingItem.DueDate,
+            CreatedAt = existingItem.CreatedAt,
+            UpdatedAt = DateTime.Now,
+            IsCompleted = editingItem.IsCompleted
+        };
+        Items.Insert(index, updatedItem);
+        ApplyFilters();
+        await SaveDataAsync();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanOpenInNewWindow))]
+    private void OpenInNewWindow()
+    {
+        if (SelectedIds.Count != 1)
+        {
+            return;
+        }
+
+        var id = SelectedIds.First();
+        var item = Items.FirstOrDefault(i => i.Id == id);
+        if (item == null)
+        {
+            return;
+        }
+
+        var detailWindow = new Views.ItemDetailWindow(this, item);
+        if (_window != null)
+        {
+            detailWindow.Show(_window);
+        }
+        else
+        {
+            detailWindow.Show();
         }
     }
 

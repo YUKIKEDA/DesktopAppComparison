@@ -2,19 +2,63 @@ import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { openPath } from "@tauri-apps/plugin-opener";
-import type { ProjectData } from "../types";
+import type { ProjectData, TodoItem } from "../types";
+
+export interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function parseProjectData(raw: unknown): ProjectData {
+  const data = raw as {
+    items?: Array<Record<string, unknown>>;
+  };
+  if (!data || !Array.isArray(data.items)) {
+    throw new Error("Invalid project data: missing items array");
+  }
+
+  return {
+    items: data.items.map(
+      (item): TodoItem => ({
+        id: Number(item.id),
+        title: String(item.title ?? ""),
+        description: String(item.description ?? ""),
+        status: (item.status as TodoItem["status"]) ?? "未着手",
+        priority: (item.priority as TodoItem["priority"]) ?? "中",
+        dueDate:
+          (item.dueDate as string | null) ??
+          (item.due_date as string | null) ??
+          null,
+        createdAt: String(
+          item.createdAt ?? item.created_at ?? new Date().toISOString()
+        ),
+        updatedAt: String(
+          item.updatedAt ?? item.updated_at ?? new Date().toISOString()
+        ),
+        isCompleted: Boolean(
+          item.isCompleted ?? item.is_completed ?? false
+        ),
+      })
+    ),
+  };
+}
+
+async function getDataDir(): Promise<string> {
+  return invoke<string>("get_app_data_dir");
+}
 
 export class DataService {
   static async loadData(): Promise<ProjectData> {
     try {
-      const dataDir = await invoke<string>("get_app_data_dir");
+      const dataDir = await getDataDir();
       const dataFile = `${dataDir}/project.json`;
-      
+
       try {
         const content = await readTextFile(dataFile);
-        const data: ProjectData = JSON.parse(content);
-        return data;
-      } catch (error) {
+        return parseProjectData(JSON.parse(content));
+      } catch {
         // File doesn't exist, return empty data
         return { items: [] };
       }
@@ -26,7 +70,7 @@ export class DataService {
 
   static async saveData(data: ProjectData): Promise<void> {
     try {
-      const dataDir = await invoke<string>("get_app_data_dir");
+      const dataDir = await getDataDir();
       const dataFile = `${dataDir}/project.json`;
       const content = JSON.stringify(data, null, 2);
       await writeTextFile(dataFile, content);
@@ -59,6 +103,16 @@ export class DataService {
     }
   }
 
+  static async importFromPath(filePath: string): Promise<ProjectData | null> {
+    try {
+      const content = await readTextFile(filePath);
+      return parseProjectData(JSON.parse(content));
+    } catch (error) {
+      console.error("Import from path failed:", error);
+      return null;
+    }
+  }
+
   static async importData(): Promise<ProjectData | null> {
     try {
       const filePath = await open({
@@ -74,23 +128,7 @@ export class DataService {
         return null; // User cancelled or multiple files selected
       }
 
-      const content = await readTextFile(filePath);
-      const data: ProjectData = JSON.parse(content);
-      
-      // Ensure the data structure is correct
-      return {
-        items: data.items.map((item: any) => ({
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          status: item.status,
-          priority: item.priority,
-          dueDate: item.dueDate ?? item.due_date ?? null,
-          createdAt: item.createdAt ?? item.created_at,
-          updatedAt: item.updatedAt ?? item.updated_at,
-          isCompleted: item.isCompleted ?? item.is_completed ?? false,
-        })),
-      };
+      return await DataService.importFromPath(filePath);
     } catch (error) {
       console.error("Import failed:", error);
       return null;
@@ -99,12 +137,42 @@ export class DataService {
 
   static async openDataFolder(): Promise<void> {
     try {
-      const dataDir = await invoke<string>("get_app_data_dir");
+      const dataDir = await getDataDir();
       await openPath(dataDir);
     } catch (error) {
       console.error("Failed to open data folder:", error);
       throw error;
     }
   }
-}
 
+  static async loadWindowBounds(): Promise<WindowBounds | null> {
+    try {
+      const dataDir = await getDataDir();
+      const content = await readTextFile(`${dataDir}/window.json`);
+      const bounds = JSON.parse(content) as WindowBounds;
+      if (
+        typeof bounds.x === "number" &&
+        typeof bounds.y === "number" &&
+        typeof bounds.width === "number" &&
+        typeof bounds.height === "number"
+      ) {
+        return bounds;
+      }
+    } catch {
+      // no saved bounds
+    }
+    return null;
+  }
+
+  static async saveWindowBounds(bounds: WindowBounds): Promise<void> {
+    try {
+      const dataDir = await getDataDir();
+      await writeTextFile(
+        `${dataDir}/window.json`,
+        JSON.stringify(bounds, null, 2)
+      );
+    } catch (error) {
+      console.error("Failed to save window bounds:", error);
+    }
+  }
+}

@@ -7,31 +7,29 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.CompositionLocalProvider
 import com.example.todoappkotlinmultiplatform.ui.components.*
 import com.example.todoappkotlinmultiplatform.model.TodoItem
 import com.example.todoappkotlinmultiplatform.viewmodel.TodoViewModel
 
 @Composable
-fun App() {
+fun App(
+    viewModel: TodoViewModel,
+    onOpenInNewWindow: (Int) -> Unit = {}
+) {
     MaterialTheme {
-        val dataService = remember { getDataService() }
-        val viewModel: TodoViewModel = viewModel { TodoViewModel(dataService) }
-        
         val items by viewModel.items.collectAsState()
         val selectedIds by viewModel.selectedIds.collectAsState()
         val filters by viewModel.filters.collectAsState()
         val sorts by viewModel.sorts.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
-        
+
         var editingItem by remember { mutableStateOf<TodoItem?>(null) }
         var isDialogOpen by remember { mutableStateOf(false) }
-        
+
         val filteredItems = remember(items, filters, sorts) {
             viewModel.getFilteredItems()
         }
-        
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -48,7 +46,6 @@ fun App() {
                                 true
                             }
                             (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.F -> {
-                                // Focus search input - handled by FilterBar
                                 false
                             }
                             keyEvent.key == Key.Delete && selectedIds.isNotEmpty() -> {
@@ -82,14 +79,20 @@ fun App() {
                 },
                 onOpenDataFolderClick = {
                     viewModel.openDataFolder()
+                },
+                onOpenInNewWindowClick = {
+                    val id = selectedIds.singleOrNull()
+                    if (id != null) {
+                        onOpenInNewWindow(id)
+                    }
                 }
             )
-            
+
             FilterBar(
                 filters = filters,
                 onFiltersChange = { viewModel.setFilters(it) }
             )
-            
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -118,7 +121,7 @@ fun App() {
                     )
                 }
             }
-            
+
             AppDialog(
                 open = isDialogOpen,
                 onDismiss = {
@@ -143,6 +146,56 @@ fun App() {
                         editingItem = null
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun DetailWindowContent(
+    itemId: Int,
+    viewModel: TodoViewModel,
+    onClose: () -> Unit
+) {
+    MaterialTheme {
+        val items by viewModel.items.collectAsState()
+        val item = items.find { it.id == itemId }
+
+        Surface(modifier = Modifier.fillMaxSize()) {
+            if (item == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                ) {
+                    Text("アイテムが見つかりません")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onClose) {
+                        Text("閉じる")
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                ) {
+                    Text(
+                        text = "アイテム詳細",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TodoForm(
+                        item = item,
+                        onSubmit = { itemInput ->
+                            viewModel.updateItem(item.id, itemInput)
+                            onClose()
+                        },
+                        onCancel = onClose
+                    )
+                }
             }
         }
     }

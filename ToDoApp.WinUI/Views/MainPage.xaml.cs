@@ -7,6 +7,8 @@ using Microsoft.UI.Xaml.Input;
 using ToDoApp.WinUI.Models;
 using ToDoApp.WinUI.Services;
 using ToDoApp.WinUI.ViewModels;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
 
 namespace ToDoApp.WinUI.Views
 {
@@ -63,6 +65,77 @@ namespace ToDoApp.WinUI.Views
         {
             await DeleteSelectedItemsWithConfirmation();
         }
+
+        private void OpenInNewWindowButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.SelectedIds.Count != 1)
+            {
+                return;
+            }
+
+            var id = ViewModel.SelectedIds[0];
+            var item = ViewModel.Items.FirstOrDefault(i => i.Id == id);
+            if (item == null)
+            {
+                return;
+            }
+
+            var detailWindow = new DetailWindow(item, ViewModel);
+            detailWindow.Activate();
+        }
+
+        private async void Root_DragOver(object sender, DragEventArgs e)
+        {
+            e.AcceptedOperation = DataPackageOperation.None;
+
+            if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                return;
+            }
+
+            var deferral = e.GetDeferral();
+            try
+            {
+                var items = await e.DataView.GetStorageItemsAsync();
+                if (items.OfType<StorageFile>().Any(IsJsonFile))
+                {
+                    e.AcceptedOperation = DataPackageOperation.Copy;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error during drag over: {ex.Message}");
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+        }
+
+        private async void Root_Drop(object sender, DragEventArgs e)
+        {
+            if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                return;
+            }
+
+            try
+            {
+                var items = await e.DataView.GetStorageItemsAsync();
+                var file = items.OfType<StorageFile>().FirstOrDefault(IsJsonFile);
+                if (file != null && !string.IsNullOrWhiteSpace(file.Path))
+                {
+                    await ViewModel.ImportFromPathAsync(file.Path);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error during drop: {ex.Message}");
+            }
+        }
+
+        private static bool IsJsonFile(StorageFile file) =>
+            file.FileType.Equals(".json", StringComparison.OrdinalIgnoreCase);
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
         {
@@ -214,4 +287,3 @@ namespace ToDoApp.WinUI.Views
         }
     }
 }
-

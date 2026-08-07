@@ -8,7 +8,13 @@ export interface ElectronAPI {
   // File operations
   exportData: (data: ProjectData) => Promise<void>;
   importData: () => Promise<ProjectData | null>;
+  importFromPath: (filePath: string) => Promise<ProjectData | null>;
   openDataFolder: () => Promise<void>;
+
+  // Window operations
+  openDetailWindow: (itemId: number) => Promise<void>;
+  getPathForFile: (file: File) => string;
+  onDataChanged: (callback: () => void) => () => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,4 +33,3 @@ declare global {
     };
   }
 }
-

@@ -33,6 +33,7 @@ namespace ToDoApp.Wpf.ViewModels
             SelectedIds = newSet;
             OnPropertyChanged(nameof(SelectedCount));
             UpdateAllFilteredSelected();
+            OpenInNewWindowCommand.NotifyCanExecuteChanged();
         }
 
         [ObservableProperty]
@@ -391,19 +392,75 @@ namespace ToDoApp.Wpf.ViewModels
                 var data = await _dataService.ImportDataAsync();
                 if (data != null)
                 {
-                    Items.Clear();
-                    foreach (var item in data.Items)
-                    {
-                        Items.Add(item);
-                    }
-                    ApplyFilters();
-                    await SaveDataAsync();
+                    await ApplyImportedDataAsync(data);
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"インポートに失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        public async Task ImportFromPathAsync(string path)
+        {
+            try
+            {
+                var data = await _dataService.ImportFromPathAsync(path);
+                if (data != null)
+                {
+                    await ApplyImportedDataAsync(data);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"インポートに失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task ApplyImportedDataAsync(ProjectData data)
+        {
+            Items.Clear();
+            foreach (var item in data.Items)
+            {
+                Items.Add(item);
+            }
+            SelectedIds.Clear();
+            NotifySelectedCountChanged();
+            ApplyFilters();
+            await SaveDataAsync();
+        }
+
+        private bool CanOpenInNewWindow() => SelectedIds.Count == 1;
+
+        [RelayCommand(CanExecute = nameof(CanOpenInNewWindow))]
+        private void OpenInNewWindow()
+        {
+            if (SelectedIds.Count != 1) return;
+
+            var id = SelectedIds.First();
+            var item = Items.FirstOrDefault(i => i.Id == id);
+            if (item == null) return;
+
+            var detailWindow = new Views.ItemDetailWindow(item, UpdateItemFromDetail);
+            detailWindow.Owner = Application.Current.MainWindow;
+            detailWindow.Show();
+        }
+
+        private void UpdateItemFromDetail(TodoItem updated)
+        {
+            var existingItem = Items.FirstOrDefault(i => i.Id == updated.Id);
+            if (existingItem == null) return;
+
+            existingItem.Title = updated.Title;
+            existingItem.Description = updated.Description;
+            existingItem.Status = updated.Status;
+            existingItem.Priority = updated.Priority;
+            existingItem.DueDate = updated.DueDate;
+            existingItem.UpdatedAt = updated.UpdatedAt;
+            existingItem.IsCompleted = updated.IsCompleted;
+
+            ApplyFilters();
+            _ = SaveDataAsync();
         }
 
         [RelayCommand]

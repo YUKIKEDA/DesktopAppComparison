@@ -18,7 +18,13 @@
         <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
     </UserControl.Resources>
 
-    <Grid KeyDown="Grid_KeyDown" Loaded="Grid_Loaded" DataContext="{x:Bind ViewModel}">
+    <Grid
+        AllowDrop="True"
+        DataContext="{x:Bind ViewModel}"
+        DragOver="Root_DragOver"
+        Drop="Root_Drop"
+        KeyDown="Grid_KeyDown"
+        Loaded="Grid_Loaded">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -49,6 +55,11 @@
                         </TextBlock>
                     </Button.Content>
                 </Button>
+                <Button
+                    Click="OpenInNewWindowButton_Click"
+                    Content="別ウィンドウで開く"
+                    IsEnabled="{x:Bind ViewModel.CanOpenInNewWindow, Mode=OneWay}"
+                    Style="{ThemeResource DefaultButtonStyle}" />
                 <Border
                     Width="1"
                     Margin="8,0"

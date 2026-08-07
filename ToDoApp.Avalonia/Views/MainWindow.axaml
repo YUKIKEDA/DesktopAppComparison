@@ -14,6 +14,8 @@
         Height="900"
         MinWidth="800"
         MinHeight="600"
+        Opacity="0.95"
+        DragDrop.AllowDrop="True"
         KeyDown="Window_KeyDown">
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -64,9 +66,15 @@
                         Padding="12,6"
                         Command="{Binding ImportDataCommand}"
                         Content="インポート" />
-                <Button Padding="12,6"
+                <Button Margin="0,0,8,0"
+                        Padding="12,6"
                         Command="{Binding OpenDataFolderCommand}"
                         Content="データフォルダを開く" />
+                <Separator Margin="8,0" />
+                <Button Padding="12,6"
+                        Command="{Binding OpenInNewWindowCommand}"
+                        Content="別ウィンドウで開く"
+                        IsEnabled="{Binding CanOpenInNewWindow}" />
             </StackPanel>
         </Border>
 

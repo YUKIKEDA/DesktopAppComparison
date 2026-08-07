@@ -11,8 +11,14 @@
     Height="900"
     MinWidth="800"
     MinHeight="600"
+    AllowDrop="True"
     Background="#F3F4F6"
+    Drop="Window_Drop"
+    DragOver="Window_DragOver"
     KeyDown="Window_KeyDown"
+    Loaded="Window_Loaded"
+    Closing="Window_Closing"
+    Opacity="0.95"
     mc:Ignorable="d">
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -45,9 +51,9 @@
                 <Button
                     Margin="0,0,8,0"
                     Padding="12,6"
+                    Command="{Binding DeleteSelectedItemsCommand}"
                     Background="#DC2626"
                     BorderThickness="0"
-                    Command="{Binding DeleteSelectedItemsCommand}"
                     Foreground="White"
                     IsEnabled="{Binding SelectedCount, Converter={StaticResource IntToBoolConverter}, Mode=OneWay}">
                     <Button.Content>
@@ -58,6 +64,11 @@
                         </TextBlock>
                     </Button.Content>
                 </Button>
+                <Button
+                    Margin="0,0,8,0"
+                    Padding="12,6"
+                    Command="{Binding OpenInNewWindowCommand}"
+                    Content="別ウィンドウで開く" />
                 <Separator Margin="8,0" />
                 <Button
                     Margin="8,0,8,0"

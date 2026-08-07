@@ -1,6 +1,7 @@
 import { Button } from "./ui/Button";
 import { useTodoStore } from "../store/useTodoStore";
 import { DataService } from "../lib/dataService";
+import { openDetailWindow } from "../lib/windowService";
 import { useEffect, useCallback } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import type { TodoItem } from "../types";
@@ -81,6 +82,16 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
     }
   };
 
+  const handleOpenDetailWindow = async () => {
+    if (selectedIds.size !== 1) return;
+    const itemId = Array.from(selectedIds)[0];
+    try {
+      await openDetailWindow(itemId);
+    } catch (error) {
+      console.error("Failed to open detail window:", error);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -110,7 +121,7 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
 
   return (
     <>
-      <div className="flex items-center gap-2 p-4 bg-white border-b border-gray-200">
+      <div className="flex items-center gap-2 p-4 bg-white/95 border-b border-gray-200">
         <Button onClick={() => handleAdd()}>+ 新しいアイテム</Button>
         <Button
           variant="destructive"
@@ -118,6 +129,13 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
           disabled={selectedIds.size === 0}
         >
           削除 ({selectedIds.size})
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleOpenDetailWindow}
+          disabled={selectedIds.size !== 1}
+        >
+          別ウィンドウで開く
         </Button>
         <div className="flex-1" />
         <Button variant="outline" onClick={handleExport}>

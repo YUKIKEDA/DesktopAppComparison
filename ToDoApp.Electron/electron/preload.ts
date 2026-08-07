@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge } from "electron";
+import { ipcRenderer, contextBridge, webUtils } from "electron";
 import type { ElectronAPI } from "../src/types/electron";
 
 // --------- Expose some API to the Renderer process ---------
@@ -7,7 +7,28 @@ const electronAPI: ElectronAPI = {
   saveData: (data) => ipcRenderer.invoke("data:save", data),
   exportData: (data) => ipcRenderer.invoke("data:export", data),
   importData: () => ipcRenderer.invoke("data:import"),
+  importFromPath: (filePath) =>
+    ipcRenderer.invoke("data:importFromPath", filePath),
   openDataFolder: () => ipcRenderer.invoke("data:openFolder"),
+  openDetailWindow: (itemId) =>
+    ipcRenderer.invoke("window:openDetail", itemId),
+  getPathForFile: (file) => {
+    try {
+      if (typeof webUtils?.getPathForFile === "function") {
+        return webUtils.getPathForFile(file);
+      }
+    } catch {
+      // fall through to File.path
+    }
+    return (file as File & { path?: string }).path ?? "";
+  },
+  onDataChanged: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on("data:changed", listener);
+    return () => {
+      ipcRenderer.removeListener("data:changed", listener);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);

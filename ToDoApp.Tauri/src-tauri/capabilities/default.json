@@ -1,12 +1,22 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": [
-    "main"
-  ],
+  "description": "Capability for the main and detail windows",
+  "windows": ["main", "detail-*"],
   "permissions": [
     "core:default",
+    "core:event:default",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-outer-position",
+    "core:window:allow-outer-size",
+    "core:window:allow-scale-factor",
+    "core:webview:allow-create-webview-window",
+    "core:webview:allow-create-webview",
+    "core:webview:allow-get-all-webviews",
+    "core:webview:allow-webview-close",
     "dialog:default",
     {
       "identifier": "opener:allow-open-path",
@@ -25,6 +35,18 @@
     "fs:allow-write-file",
     "fs:allow-appdata-read",
     "fs:allow-appdata-write",
-    "fs:allow-appdata-write-recursive"
+    "fs:allow-appdata-write-recursive",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$APPDATA/**" },
+        { "path": "$APPCONFIG/**" },
+        { "path": "$HOME/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "**" }
+      ]
+    }
   ]
 }
