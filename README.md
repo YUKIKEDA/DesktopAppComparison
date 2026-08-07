@@ -285,23 +285,13 @@ React Native for Desktopは比較対象から除外しています。理由は�
 
 上記の理由により、React Native for Desktopは実用的な比較対象として不適切と判断し、除外しています。
 
-### WinUI3除外理由
-
-WinUI3は比較対象から除外しています。理由は以下の通りです：
-
-- **情報不足**: WinUI3に関する情報が少なく、実用的な開発を行うことが困難である。ドキュメントやコミュニティサポートが不十分である
-- **標準コンポーネントの不足**: WinUI3には標準でDataGridコンポーネントが提供されていないため、本プロジェクトの要件であるテーブル形式のUIを実装するには、カスタムコンポーネントの実装が必要となる
-- **フレームワークの成熟度**: WinUI3はまだ準備が整っていない（unreadyな）フレームワークであり、本プロジェクトの要件を満たす実装が困難である
-
-上記の理由により、WinUI3は実用的な比較対象として不適切と判断し、除外しています。
-
 ### MAUI除外理由
 
 MAUIは比較対象から除外しています。理由は以下の通りです：
 
-- **WinUI3のラッパー**: MAUIはWinUI3のラッパーであり、WinUI3と同様の問題を抱えている。WinUI3が持つ制約がそのままMAUIにも影響する
-- **標準コンポーネントの不足**: WinUI3ベースのため、標準でDataGridコンポーネントが提供されていない。本プロジェクトの要件であるテーブル形式のUIを実装するには、カスタムコンポーネントの実装が必要となる
-- **フレームワークの成熟度**: WinUI3と同様に、まだ準備が整っていない（unreadyな）フレームワークであり、本プロジェクトの要件を満たす実装が困難である
+- **未実装**: 本リポジトリに MAUI 実装がなく、比較用アプリが存在しない
+- **WinUI3との重複**: Windows 上では WinUI3 のラッパーに近く、WinUI3 を比較対象に含めているため、別途比較する優先度が低い
+- **標準コンポーネントの不足**: 標準で DataGrid が提供されておらず、CommunityToolkit 等の追加導入が必要となる
 
 上記の理由により、MAUIは実用的な比較対象として不適切と判断し、除外しています。
 
@@ -319,20 +309,25 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 | Framework             | CRUD | Filtering | Persistence | Search | Sort | Notes                        |
 | --------------------- | ---- | --------- | ----------- | ------ | ---- | ---------------------------- |
-| Avalonia              | -    | -         | -           | -      | -    | Pending                      |
-| Compose Multiplatform | -    | -         | -           | -      | -    | Pending                      |
-| Electron              | -    | -         | -           | -      | -    | Pending                      |
-| Flutter               | -    | -         | -           | -      | -    | Pending                      |
+| Avalonia              | Y    | Y         | Y           | Y      | Y    |                              |
+| Compose Multiplatform | Y    | Y         | Y           | Y      | Y    |                              |
+| Electron              | Y    | Y         | Y           | Y      | Y    |                              |
+| Flutter               | Y    | Y         | Y           | Y      | Y    |                              |
 | GPUI                  | -    | -         | -           | -      | -    | Excluded (no file picker)    |
 | MAUI                  | -    | -         | -           | -      | -    | Excluded (WinUI3 wrapper)    |
 | React Native          | -    | -         | -           | -      | -    | Excluded (insufficient info) |
-| Tauri                 | -    | -         | -           | -      | -    | Pending                      |
+| Tauri                 | Y    | Y         | Y           | Y      | Y    |                              |
 | WinForms              | -    | -         | -           | -      | -    | Excluded (limited UI)        |
-| WPF                   | -    | -         | -           | -      | -    | Pending                      |
-| WinUI3                | -    | -         | -           | -      | -    | Excluded (no DataGrid)       |
-| wxWidgets             | -    | -         | -           | -      | -    | Pending                      |
+| WPF                   | Y    | Y         | Y           | Y      | Y    |                              |
+| WinUI3                | Y    | Y         | Y           | Y      | Y    |                              |
+| wxWidgets             | Y    | Y         | Y           | Y      | Y    |                              |
 
-**Legend**: ✅ Implemented / ❌ Not implemented / ⚠️ Partial / - Not checked
+**凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
+
+**Notes**:
+- Filtering: ステータス / 優先度フィルタは実装済み。日付範囲フィルタ UI は各アプリとも未実装
+- Search: FilterBar によるタイトル / 説明のテキスト検索
+- WinUI3: CommunityToolkit DataGrid を使用してテーブル UI を実装
 
 #### ウィンドウ機能
 
@@ -348,10 +343,10 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -            | -      | -               | -           | -            | Pending                      |
 | WinForms              | -            | -      | -               | -           | -            | Excluded (limited UI)        |
 | WPF                   | -            | -      | -               | -           | -            | Pending                      |
-| WinUI3                | -            | -      | -               | -           | -            | Excluded (no DataGrid)       |
+| WinUI3                | -            | -      | -               | -           | -            | Pending                      |
 | wxWidgets             | -            | -      | -               | -           | -            | Pending                      |
 
-**Legend**: ✅ Supported / ❌ Not supported / ⚠️ Partial / - Not checked
+**凡例**: `Y` サポート / `N` 未サポート / `P` 部分的 / `-` 未確認
 
 #### UI機能
 
@@ -367,10 +362,10 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -            | -         | -            | -         | -                 | Pending                      |
 | WinForms              | -            | -         | -            | -         | -                 | Excluded (limited UI)        |
 | WPF                   | -            | -         | -            | -         | -                 | Pending                      |
-| WinUI3                | -            | -         | -            | -         | -                 | Excluded (no DataGrid)       |
+| WinUI3                | -            | -         | -            | -         | -                 | Pending                      |
 | wxWidgets             | -            | -         | -            | -         | -                 | Pending                      |
 
-**Legend**: ✅ Supported / ❌ Not supported / ⚠️ Partial / - Not checked
+**凡例**: `Y` サポート / `N` 未サポート / `P` 部分的 / `-` 未確認
 
 #### プラットフォーム統合機能
 
@@ -386,10 +381,10 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -            | -           | -                | -             | -         | Pending                      |
 | WinForms              | -            | -           | -                | -             | -         | Excluded (limited UI)        |
 | WPF                   | -            | -           | -                | -             | -         | Pending                      |
-| WinUI3                | -            | -           | -                | -             | -         | Excluded (no DataGrid)       |
+| WinUI3                | -            | -           | -                | -             | -         | Pending                      |
 | wxWidgets             | -            | -           | -                | -             | -         | Pending                      |
 
-**Legend**: ✅ Supported / ❌ Not supported / ⚠️ Partial / - Not checked
+**凡例**: `Y` サポート / `N` 未サポート / `P` 部分的 / `-` 未確認
 
 #### パフォーマンス機能
 
@@ -405,10 +400,10 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -            | -         | -               | -     | -           | Pending                      |
 | WinForms              | -            | -         | -               | -     | -           | Excluded (limited UI)        |
 | WPF                   | -            | -         | -               | -     | -           | Pending                      |
-| WinUI3                | -            | -         | -               | -     | -           | Excluded (no DataGrid)       |
+| WinUI3                | -            | -         | -               | -     | -           | Pending                      |
 | wxWidgets             | -            | -         | -               | -     | -           | Pending                      |
 
-**Legend**: ✅ Supported / ❌ Not supported / ⚠️ Partial / - Not checked
+**凡例**: `Y` サポート / `N` 未サポート / `P` 部分的 / `-` 未確認
 
 ### 実装面の比較
 
@@ -424,7 +419,7 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -   | -            | -              | -                | Pending                      |
 | WinForms              | -   | -            | -              | -                | Excluded (limited UI)        |
 | WPF                   | -   | -            | -              | -                | Pending                      |
-| WinUI3                | -   | -            | -              | -                | Excluded (no DataGrid)       |
+| WinUI3                | -   | -            | -              | -                | Pending                      |
 | wxWidgets             | -   | -            | -              | -                | Pending                      |
 
 ### 実行時パフォーマンスの比較
@@ -443,7 +438,7 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -               | -        | -         | -          | -                            |
 | WinForms              | -               | -        | -         | -          | Excluded (limited UI)        |
 | WPF                   | -               | -        | -         | -          | -                            |
-| WinUI3                | -               | -        | -         | -          | Excluded (no DataGrid)       |
+| WinUI3                | -               | -        | -         | -          | Pending                      |
 | wxWidgets             | -               | -        | -         | -          | -                            |
 
 #### CPU使用率（%）
@@ -460,7 +455,7 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -    | -   | -      | -         | -                            |
 | WinForms              | -    | -   | -      | -         | Excluded (limited UI)        |
 | WPF                   | -    | -   | -      | -         | -                            |
-| WinUI3                | -    | -   | -      | -         | Excluded (no DataGrid)       |
+| WinUI3                | -    | -   | -      | -         | Pending                      |
 | wxWidgets             | -    | -   | -      | -         | -                            |
 
 #### 起動時間とUI応答性
@@ -477,7 +472,7 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -           | -               | -          | -                            |
 | WinForms              | -           | -               | -          | Excluded (limited UI)        |
 | WPF                   | -           | -               | -          | -                            |
-| WinUI3                | -           | -               | -          | Excluded (no DataGrid)       |
+| WinUI3                | -           | -               | -          | Pending                      |
 | wxWidgets             | -           | -               | -          | -                            |
 
 ### 開発体験の評価
@@ -494,13 +489,13 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | Tauri                 | -           | -    | -         | -           | -                            |
 | WinForms              | -           | -    | -         | -           | Excluded (limited UI)        |
 | WPF                   | -           | -    | -         | -           | -                            |
-| WinUI3                | -           | -    | -         | -           | Excluded (no DataGrid)       |
+| WinUI3                | -           | -    | -         | -           | Pending                      |
 | wxWidgets             | -           | -    | -         | -           | -                            |
 
-**Rating criteria**:
+**評価基準**:
 
-- Ease of use: ⭐⭐⭐⭐⭐ (5-point scale)
-- Docs: ⭐⭐⭐⭐⭐ (5-point scale)
-- Community: ⭐⭐⭐⭐⭐ (5-point scale)
-- Testability: ⭐⭐⭐⭐⭐ (5-point scale) — UI test automation ease, tooling maturity, testability hooks (e.g. AutomationId / semantics)
-- Overall: ⭐⭐⭐⭐⭐ (5-point scale)
+- Ease of use: `*****`（5段階）
+- Docs: `*****`（5段階）
+- Community: `*****`（5段階）
+- Testability: `*****`（5段階） - UIテスト自動化のしやすさ、ツール成熟度、テスト用フック（AutomationId / semantics など）
+- Overall: `*****`（5段階）
