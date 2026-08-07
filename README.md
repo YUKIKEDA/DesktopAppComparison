@@ -44,6 +44,13 @@ GitHub ProjectのTable viewを参考にした、テーブル形式のプロジ�
 | Created At  | `createdAt`   | datetime | ISO 8601, set automatically              | No       |
 | Updated At  | `updatedAt`   | datetime | ISO 8601, updated automatically          | No       |
 
+**ヘッダー**:
+- Column: カラム名
+- Field: フィールド名
+- Type: データ型
+- Description: 説明
+- Editable: 編集可能
+
 #### 3. CRUD操作
 
 - **追加**
@@ -322,6 +329,15 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WinUI3                | Y    | Y         | Y           | Y      | Y    |                              |
 | wxWidgets             | Y    | Y         | Y           | Y      | Y    |                              |
 
+**ヘッダー**:
+- Framework: フレームワーク
+- CRUD: 作成・読取・更新・削除
+- Filtering: フィルタリング
+- Persistence: データ永続化
+- Search: 検索
+- Sort: ソート
+- Notes: 備考
+
 **凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
 
 **Notes**:
@@ -333,20 +349,35 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 | Framework             | Multi-window | Resize | Position memory | Drag & drop | Transparency | Notes                        |
 | --------------------- | ------------ | ------ | --------------- | ----------- | ------------ | ---------------------------- |
-| Avalonia              | -            | -      | -               | -           | -            | Pending                      |
-| Compose Multiplatform | -            | -      | -               | -           | -            | Pending                      |
-| Electron              | -            | -      | -               | -           | -            | Pending                      |
-| Flutter               | -            | -      | -               | -           | -            | Pending                      |
+| Avalonia              | N            | Y      | N               | N           | N            |                              |
+| Compose Multiplatform | N            | Y      | N               | N           | N            |                              |
+| Electron              | N            | Y      | N               | N           | N            |                              |
+| Flutter               | N            | Y      | N               | N           | N            |                              |
 | GPUI                  | -            | -      | -               | -           | -            | Excluded (no file picker)    |
 | MAUI                  | -            | -      | -               | -           | -            | Excluded (WinUI3 wrapper)    |
 | React Native          | -            | -      | -               | -           | -            | Excluded (insufficient info) |
-| Tauri                 | -            | -      | -               | -           | -            | Pending                      |
+| Tauri                 | N            | Y      | N               | N           | N            |                              |
 | WinForms              | -            | -      | -               | -           | -            | Excluded (limited UI)        |
-| WPF                   | -            | -      | -               | -           | -            | Pending                      |
-| WinUI3                | -            | -      | -               | -           | -            | Pending                      |
-| wxWidgets             | -            | -      | -               | -           | -            | Pending                      |
+| WPF                   | N            | Y      | N               | N           | N            |                              |
+| WinUI3                | N            | Y      | N               | N           | Y            | MicaBackdrop                 |
+| wxWidgets             | N            | Y      | N               | N           | N            |                              |
 
-**凡例**: `Y` サポート / `N` 未サポート / `P` 部分的 / `-` 未確認
+**ヘッダー**:
+- Framework: フレームワーク
+- Multi-window: マルチウィンドウ
+- Resize: ウィンドウサイズ変更
+- Position memory: ウィンドウ位置・サイズの記憶
+- Drag & drop: ドラッグ&ドロップ
+- Transparency: ウィンドウ透過
+- Notes: 備考
+
+**凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
+
+**Notes**:
+- 本リポジトリの各アプリ実装に基づく判定（フレームワーク一般の能力は含めない）
+- Multi-window: モーダルダイアログは含めない
+- Resize: リサイズ無効化がなければ OS 標準のリサイズ可を `Y`
+- Transparency: WinUI3 のみ `MicaBackdrop` を使用
 
 #### UI機能
 
@@ -365,7 +396,16 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WinUI3                | -            | -         | -            | -         | -                 | Pending                      |
 | wxWidgets             | -            | -         | -            | -         | -                 | Pending                      |
 
-**凡例**: `Y` サポート / `N` 未サポート / `P` 部分的 / `-` 未確認
+**ヘッダー**:
+- Framework: フレームワーク
+- Theme switch: テーマ切り替え
+- Dark mode: ダークモード
+- Custom style: カスタムスタイル
+- Animation: アニメーション
+- Responsive layout: レスポンシブレイアウト
+- Notes: 備考
+
+**凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
 
 #### プラットフォーム統合機能
 
@@ -384,7 +424,16 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WinUI3                | -            | -           | -                | -             | -         | Pending                      |
 | wxWidgets             | -            | -           | -                | -             | -         | Pending                      |
 
-**凡例**: `Y` サポート / `N` 未サポート / `P` 部分的 / `-` 未確認
+**ヘッダー**:
+- Framework: フレームワーク
+- Notification: システム通知
+- System tray: システムトレイ
+- File association: ファイル関連付け
+- Native dialog: ネイティブダイアログ
+- Clipboard: クリップボード
+- Notes: 備考
+
+**凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
 
 #### パフォーマンス機能
 
@@ -403,7 +452,16 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WinUI3                | -            | -         | -               | -     | -           | Pending                      |
 | wxWidgets             | -            | -         | -               | -     | -           | Pending                      |
 
-**凡例**: `Y` サポート / `N` 未サポート / `P` 部分的 / `-` 未確認
+**ヘッダー**:
+- Framework: フレームワーク
+- Virtual list: 仮想化リスト
+- Lazy load: 遅延読み込み
+- Background work: バックグラウンド処理
+- Async: 非同期処理
+- Memory opt.: メモリ最適化
+- Notes: 備考
+
+**凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
 
 ### 実装面の比較
 
@@ -421,6 +479,14 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WPF                   | -   | -            | -              | -                | Pending                      |
 | WinUI3                | -   | -            | -              | -                | Pending                      |
 | wxWidgets             | -   | -            | -              | -                | Pending                      |
+
+**ヘッダー**:
+- Framework: フレームワーク
+- LOC: コード行数
+- Dependencies: 依存関係数
+- Build time (s): ビルド時間（秒）
+- Bundle size (MB): バンドルサイズ（MB）
+- Notes: 備考
 
 ### 実行時パフォーマンスの比較
 
@@ -441,6 +507,14 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WinUI3                | -               | -        | -         | -          | Pending                      |
 | wxWidgets             | -               | -        | -         | -          | -                            |
 
+**ヘッダー**:
+- Framework: フレームワーク
+- Startup (empty): 起動直後（空）
+- After 10: 10件追加後
+- After 100: 100件追加後
+- After 1000: 1000件追加後
+- Peak: ピーク使用量
+
 #### CPU使用率（%）
 
 | Framework             | Idle | Add | Scroll | Filtering | Peak                         |
@@ -457,6 +531,14 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WPF                   | -    | -   | -      | -         | -                            |
 | WinUI3                | -    | -   | -      | -         | Pending                      |
 | wxWidgets             | -    | -   | -      | -         | -                            |
+
+**ヘッダー**:
+- Framework: フレームワーク
+- Idle: アイドル時
+- Add: 追加操作時
+- Scroll: スクロール時
+- Filtering: フィルタリング時
+- Peak: ピーク使用率
 
 #### 起動時間とUI応答性
 
@@ -475,6 +557,13 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WinUI3                | -           | -               | -          | Pending                      |
 | wxWidgets             | -           | -               | -          | -                            |
 
+**ヘッダー**:
+- Framework: フレームワーク
+- Startup (s): 起動時間（秒）
+- Render 1000 (s): 1000件表示時間（秒）
+- Scroll FPS: スクロール時 FPS
+- Filter response (ms): フィルタリング応答時間（ms）
+
 ### 開発体験の評価
 
 | Framework             | Ease of use | Docs | Community | Testability | Overall                      |
@@ -491,6 +580,14 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 | WPF                   | -           | -    | -         | -           | -                            |
 | WinUI3                | -           | -    | -         | -           | Pending                      |
 | wxWidgets             | -           | -    | -         | -           | -                            |
+
+**ヘッダー**:
+- Framework: フレームワーク
+- Ease of use: 開発の容易さ
+- Docs: ドキュメント
+- Community: コミュニティ
+- Testability: テスタビリティ
+- Overall: 総合評価
 
 **評価基準**:
 
