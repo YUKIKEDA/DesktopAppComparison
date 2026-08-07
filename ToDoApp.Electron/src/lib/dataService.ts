@@ -1,4 +1,12 @@
-import type { ProjectData } from "../types";
+import type { ProjectData, ThemeData } from "../types";
+
+function parseThemeData(raw: unknown): ThemeData {
+  const data = raw as { theme?: string };
+  if (data?.theme === "dark" || data?.theme === "light") {
+    return { theme: data.theme };
+  }
+  return { theme: "light" };
+}
 
 export class DataService {
   static async loadData(): Promise<ProjectData> {
@@ -16,6 +24,22 @@ export class DataService {
     } else {
       // Fallback for development
       localStorage.setItem("project-data", JSON.stringify(data));
+    }
+  }
+
+  static async loadTheme(): Promise<ThemeData> {
+    if (window.electronAPI?.loadTheme) {
+      return await window.electronAPI.loadTheme();
+    }
+    const stored = localStorage.getItem("theme-data");
+    return stored ? parseThemeData(JSON.parse(stored)) : { theme: "light" };
+  }
+
+  static async saveTheme(data: ThemeData): Promise<void> {
+    if (window.electronAPI?.saveTheme) {
+      await window.electronAPI.saveTheme(data);
+    } else {
+      localStorage.setItem("theme-data", JSON.stringify(data));
     }
   }
 

@@ -51,6 +51,7 @@ class DataService:
         self._data_dir = self._get_data_dir()
         self._data_file = self._data_dir / "project.json"
         self._window_file = self._data_dir / "window.json"
+        self._theme_file = self._data_dir / "theme.json"
         self._ensure_data_dir()
 
     @property
@@ -248,6 +249,37 @@ class DataService:
             temp_file.replace(self._window_file)
         except Exception as e:
             wx.LogError(f"Failed to save window geometry: {e}")
+
+    def load_theme(self) -> str:
+        """Load theme preference from theme.json. Defaults to light."""
+        try:
+            self._ensure_data_dir()
+            if not self._theme_file.exists():
+                return "light"
+            with open(self._theme_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return "light"
+            theme = data.get("theme")
+            if theme in ("light", "dark"):
+                return theme
+            return "light"
+        except Exception as e:
+            wx.LogError(f"Failed to load theme: {e}")
+            return "light"
+
+    def save_theme(self, theme: str) -> None:
+        """Persist theme preference next to project.json."""
+        try:
+            self._ensure_data_dir()
+            normalized = "dark" if theme == "dark" else "light"
+            payload = {"theme": normalized}
+            temp_file = self._theme_file.with_suffix(".tmp")
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            temp_file.replace(self._theme_file)
+        except Exception as e:
+            wx.LogError(f"Failed to save theme: {e}")
 
     def open_data_folder(self) -> None:
         """Open data folder in file manager."""

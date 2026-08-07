@@ -14,6 +14,12 @@ export interface ProjectData {
   items: TodoItem[];
 }
 
+export type ThemeMode = "light" | "dark";
+
+export interface ThemeData {
+  theme: ThemeMode;
+}
+
 export type SortDirection = "asc" | "desc" | null;
 
 export interface SortConfig {

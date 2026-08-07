@@ -382,20 +382,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### UI機能
 
-| Framework             | Theme switch | Dark mode | Custom style | Animation | Responsive layout | Notes                                  |
-| --------------------- | ------------ | --------- | ------------ | --------- | ----------------- | -------------------------------------- |
-| Avalonia              | N            | N         | Y            | N         | N                 |                                        |
-| Compose Multiplatform | N            | N         | N            | N         | N                 |                                        |
-| Electron              | N            | N         | Y            | N         | P                 | FilterBar flex-wrap only               |
-| Flutter               | N            | N         | Y            | N         | N                 |                                        |
-| GPUI                  | -            | -         | -            | -         | -                 | Excluded (no file picker)              |
-| MAUI                  | -            | -         | -            | -         | -                 | Excluded (WinUI3 wrapper)              |
-| React Native          | -            | -         | -            | -         | -                 | Excluded (insufficient info)           |
-| Tauri                 | N            | N         | Y            | N         | P                 | FilterBar flex-wrap only               |
-| WinForms              | -            | -         | -            | -         | -                 | Excluded (limited UI)                  |
-| WPF                   | N            | N         | Y            | N         | N                 |                                        |
-| WinUI3                | N            | Y         | N            | N         | N                 | Follows system theme via ThemeResource |
-| wxWidgets             | N            | N         | N            | N         | N                 |                                        |
+| Framework             | Theme switch | Dark mode | Custom style | Animation | Responsive layout | Notes                                 |
+| --------------------- | ------------ | --------- | ------------ | --------- | ----------------- | ------------------------------------- |
+| Avalonia              | Y            | Y         | Y            | Y         | Y                 |                                       |
+| Compose Multiplatform | Y            | Y         | Y            | Y         | Y                 |                                       |
+| Electron              | Y            | Y         | Y            | Y         | Y                 |                                       |
+| Flutter               | Y            | Y         | Y            | Y         | Y                 |                                       |
+| GPUI                  | -            | -         | -            | -         | -                 | Excluded (no file picker)             |
+| MAUI                  | -            | -         | -            | -         | -                 | Excluded (WinUI3 wrapper)             |
+| React Native          | -            | -         | -            | -         | -                 | Excluded (insufficient info)          |
+| Tauri                 | Y            | Y         | Y            | Y         | Y                 |                                       |
+| WinForms              | -            | -         | -            | -         | -                 | Excluded (limited UI)                 |
+| WPF                   | Y            | Y         | Y            | Y         | Y                 |                                       |
+| WinUI3                | Y            | Y         | Y            | Y         | Y                 | App RequestedTheme (not system-only)  |
+| wxWidgets             | Y            | Y         | Y            | P         | Y                 | FW: limited UI animation on wxPython  |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -409,12 +409,11 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 **凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
 
 **Notes**:
-- 各アプリ実装に基づく判定（フレームワーク一般の能力は含めない）
-- Theme switch: アプリ内でのテーマ切替 UI はいずれも未実装
-- Dark mode: WinUI3 のみシステム暗色テーマに追従。他はライト固定
-- Custom style: 独自カラー / Tailwind 等で既定以外の見た目を付けているものを `Y`
-- Animation: 意図的な UI アニメは未実装（ホバーの `transition-colors` のみは対象外）
-- Responsive layout: Electron / Tauri の FilterBar `flex-wrap` のみ `P`
+- 各アプリ実装に基づく判定
+- Theme switch / Dark mode: ツールバーからライト/ダーク切替。`theme.json` に永続化
+- Custom style: ブランド色（青 `#2563EB` / 赤 `#DC2626` / 灰背景系）をライト・ダーク双方に適用
+- Animation: ダイアログ表示などの短いトランジション（約 150–200ms）。wx は `ShowWithEffect` の best-effort のため `P`
+- Responsive layout: Toolbar / FilterBar の折り返し（Wrap / FlowRow / flex-wrap）
 
 #### プラットフォーム統合機能
 

@@ -5,6 +5,8 @@ import type { ElectronAPI } from "../src/types/electron";
 const electronAPI: ElectronAPI = {
   loadData: () => ipcRenderer.invoke("data:load"),
   saveData: (data) => ipcRenderer.invoke("data:save", data),
+  loadTheme: () => ipcRenderer.invoke("theme:load"),
+  saveTheme: (data) => ipcRenderer.invoke("theme:save", data),
   exportData: (data) => ipcRenderer.invoke("data:export", data),
   importData: () => ipcRenderer.invoke("data:import"),
   importFromPath: (filePath) =>
@@ -27,6 +29,13 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on("data:changed", listener);
     return () => {
       ipcRenderer.removeListener("data:changed", listener);
+    };
+  },
+  onThemeChanged: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on("theme:changed", listener);
+    return () => {
+      ipcRenderer.removeListener("theme:changed", listener);
     };
   },
 };

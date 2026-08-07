@@ -8,4 +8,10 @@
     background-color: rgba(249, 250, 251, 0.95);
     @apply text-gray-900;
   }
+
+  html.dark,
+  html.dark body {
+    background-color: rgba(17, 24, 39, 0.95);
+    @apply text-gray-100;
+  }
 }

@@ -2,13 +2,14 @@ import { app, BrowserWindow, ipcMain, dialog, shell, screen } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
-import type { ProjectData, TodoItem } from "../src/types/index";
+import type { ProjectData, ThemeData, TodoItem } from "../src/types/index";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Data directory
 const DATA_DIR = path.join(app.getPath("userData"), "data");
 const DATA_FILE = path.join(DATA_DIR, "project.json");
+const THEME_FILE = path.join(DATA_DIR, "theme.json");
 const WINDOW_FILE = path.join(DATA_DIR, "window.json");
 
 interface WindowBounds {
@@ -134,6 +135,20 @@ function broadcastDataChanged() {
   }
 }
 
+function broadcastThemeChanged() {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send("theme:changed");
+  }
+}
+
+function parseThemeData(content: string): ThemeData {
+  const data = JSON.parse(content) as { theme?: string };
+  if (data?.theme === "dark" || data?.theme === "light") {
+    return { theme: data.theme };
+  }
+  return { theme: "light" };
+}
+
 function createDetailWindow(itemId: number) {
   const detailWin = new BrowserWindow({
     width: 520,
@@ -252,6 +267,42 @@ async function setupIpcHandlers() {
     "window:openDetail",
     async (_event, itemId: number): Promise<void> => {
       createDetailWindow(itemId);
+    }
+  );
+
+  // Load theme
+  ipcMain.handle("theme:load", async (): Promise<ThemeData> => {
+    try {
+      await fs.mkdir(DATA_DIR, { recursive: true });
+      const content = await fs.readFile(THEME_FILE, "utf-8").catch(() => null);
+      if (content) {
+        return parseThemeData(content);
+      }
+      return { theme: "light" };
+    } catch (error) {
+      console.error("Error loading theme:", error);
+      return { theme: "light" };
+    }
+  });
+
+  // Save theme
+  ipcMain.handle(
+    "theme:save",
+    async (_event, data: ThemeData): Promise<void> => {
+      try {
+        await fs.mkdir(DATA_DIR, { recursive: true });
+        const theme: ThemeData =
+          data?.theme === "dark" ? { theme: "dark" } : { theme: "light" };
+        await fs.writeFile(
+          THEME_FILE,
+          JSON.stringify(theme, null, 2),
+          "utf-8"
+        );
+        broadcastThemeChanged();
+      } catch (error) {
+        console.error("Error saving theme:", error);
+        throw error;
+      }
     }
   );
 }

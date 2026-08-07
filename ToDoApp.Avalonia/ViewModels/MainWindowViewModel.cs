@@ -16,6 +16,7 @@ namespace ToDoApp.Avalonia.ViewModels;
     public partial class MainWindowViewModel : ViewModelBase
     {
         private readonly IDataService _dataService;
+        private readonly ThemeService _themeService;
         private System.Timers.Timer? _autoSaveTimer;
         private Window? _window;
 
@@ -61,6 +62,12 @@ namespace ToDoApp.Avalonia.ViewModels;
     [ObservableProperty]
     private bool _isDialogOpen;
 
+    [ObservableProperty]
+    private double _dialogOpacity;
+
+    [ObservableProperty]
+    private bool _isDarkTheme;
+
     private string _sortColumn = string.Empty;
 
     public string SortColumn
@@ -103,10 +110,15 @@ namespace ToDoApp.Avalonia.ViewModels;
     public MainWindowViewModel(IDataService dataService, Window? window = null)
     {
         _dataService = dataService;
+        _themeService = new ThemeService(dataService.DataDirectory);
         _window = window;
         // FilteredItemsは[ObservableProperty]で自動的に初期化される
         // 明示的に初期化して確実に空のコレクションを設定
         FilteredItems = new ObservableCollection<TodoItem>();
+
+        var theme = _themeService.LoadTheme();
+        _themeService.ApplyTheme(theme);
+        IsDarkTheme = theme == "dark";
 
         // 自動保存タイマーの設定（2秒のデバウンス）
         _autoSaveTimer = new System.Timers.Timer(2000);
@@ -125,6 +137,26 @@ namespace ToDoApp.Avalonia.ViewModels;
 
         // 初期データ読み込み
         LoadDataCommand.Execute(null);
+    }
+
+    partial void OnIsDialogOpenChanged(bool value)
+    {
+        if (value)
+        {
+            DialogOpacity = 0;
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(() => DialogOpacity = 1);
+        }
+        else
+        {
+            DialogOpacity = 0;
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleTheme()
+    {
+        var theme = _themeService.ToggleTheme();
+        IsDarkTheme = theme == "dark";
     }
 
     partial void OnSearchTextChanged(string value)

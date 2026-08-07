@@ -232,6 +232,14 @@ class TodoController:
         """Save window geometry."""
         self._data_service.save_window_geometry(x, y, width, height)
 
+    def load_theme(self) -> str:
+        """Load persisted theme name."""
+        return self._data_service.load_theme()
+
+    def save_theme(self, theme: str) -> None:
+        """Persist theme name."""
+        self._data_service.save_theme(theme)
+
     def open_data_folder(self) -> None:
         """Open data folder."""
         self._data_service.open_data_folder()

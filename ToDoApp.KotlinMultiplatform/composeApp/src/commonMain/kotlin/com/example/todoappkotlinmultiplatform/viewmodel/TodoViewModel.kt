@@ -28,10 +28,36 @@ class TodoViewModel(private val dataService: IDataService) : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _theme = MutableStateFlow("light")
+    val theme: StateFlow<String> = _theme.asStateFlow()
+
     private var saveJob: Job? = null
 
     init {
         loadData()
+        loadTheme()
+    }
+
+    private fun loadTheme() {
+        viewModelScope.launch {
+            try {
+                _theme.value = dataService.loadTheme()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun toggleTheme() {
+        viewModelScope.launch {
+            val next = if (_theme.value == "dark") "light" else "dark"
+            _theme.value = next
+            try {
+                dataService.saveTheme(next)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     private fun loadData() {

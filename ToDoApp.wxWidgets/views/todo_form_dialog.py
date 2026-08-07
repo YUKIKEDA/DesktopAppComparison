@@ -7,19 +7,24 @@ from typing import Optional
 from models.todo_item import TodoItem
 from utils.constants import STATUS_OPTIONS, PRIORITY_OPTIONS
 from utils.date_utils import parse_iso_datetime
+from utils.theme import get_theme, style_brand_button
 
 
 class TodoFormDialog(wx.Dialog):
     """Dialog for adding/editing todo items."""
-    def __init__(self, parent, item: Optional[TodoItem] = None):
+    def __init__(self, parent, item: Optional[TodoItem] = None, theme_name: str = "light"):
         title = "アイテムを編集" if item else "新しいアイテムを追加"
         super().__init__(parent, title=title, size=(550, 500))
 
         self.item = item
         self.result = None
+        self._theme_name = theme_name
+        self._fade_timer = None
+        self._fade_alpha = 0
 
         self._create_ui()
         self._bind_events()
+        self._apply_theme()
 
         if item:
             self._load_item(item)
@@ -27,6 +32,30 @@ class TodoFormDialog(wx.Dialog):
         # Fit dialog to content and set minimum size
         self.Fit()
         self.SetMinSize((500, 450))
+
+    def ShowModal(self):
+        """Show modal with best-effort fade-in (~175ms) when transparency is available."""
+        try:
+            if self.CanSetTransparent():
+                self._fade_alpha = 0
+                self.SetTransparent(0)
+                self._fade_timer = wx.Timer(self)
+                self.Bind(wx.EVT_TIMER, self._on_fade_tick, self._fade_timer)
+                self._fade_timer.Start(20)
+        except Exception:
+            pass
+        return super().ShowModal()
+
+    def _on_fade_tick(self, event: wx.TimerEvent) -> None:
+        """Step fade-in opacity."""
+        self._fade_alpha = min(255, self._fade_alpha + 30)
+        try:
+            self.SetTransparent(self._fade_alpha)
+        except Exception:
+            self._fade_alpha = 255
+        if self._fade_alpha >= 255 and self._fade_timer:
+            self._fade_timer.Stop()
+            self._fade_timer = None
 
     def _create_ui(self) -> None:
         """Create form UI."""
@@ -108,12 +137,32 @@ class TodoFormDialog(wx.Dialog):
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         main_sizer.Add(panel, proportion=1, flag=wx.EXPAND | wx.ALL, border=10)
         self.SetSizer(main_sizer)
+        self._panel = panel
         
         # Ensure buttons are visible by adding some bottom padding
         main_sizer.AddSpacer(10)
 
         # Set focus to title
         self.title_text.SetFocus()
+
+    def _apply_theme(self) -> None:
+        """Apply brand colours for light/dark theme."""
+        colors = get_theme(self._theme_name)
+        self.SetBackgroundColour(colors.bg)
+        if hasattr(self, "_panel") and self._panel:
+            self._panel.SetBackgroundColour(colors.surface)
+            self._panel.SetForegroundColour(colors.text)
+            for child in self._panel.GetChildren():
+                if isinstance(child, wx.StaticText):
+                    child.SetForegroundColour(colors.text)
+                    child.SetBackgroundColour(colors.surface)
+                elif isinstance(child, (wx.TextCtrl, wx.ComboBox)):
+                    child.SetBackgroundColour(colors.surface_alt)
+                    child.SetForegroundColour(colors.text)
+        style_brand_button(self.save_btn, colors.brand_blue, colors.on_brand)
+        self.cancel_btn.SetBackgroundColour(colors.surface_alt)
+        self.cancel_btn.SetForegroundColour(colors.text)
+        self.Refresh()
 
     def _bind_events(self) -> None:
         """Bind events."""
@@ -211,10 +260,16 @@ class TodoFormDialog(wx.Dialog):
             "dueDate": due_date,
         }
 
+        if self._fade_timer:
+            self._fade_timer.Stop()
+            self._fade_timer = None
         self.EndModal(wx.ID_OK)
 
     def _on_cancel(self, event: wx.CommandEvent) -> None:
         """Handle cancel button click."""
+        if self._fade_timer:
+            self._fade_timer.Stop()
+            self._fade_timer = None
         self.EndModal(wx.ID_CANCEL)
 
     def get_result(self) -> Optional[dict]:

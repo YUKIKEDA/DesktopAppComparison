@@ -26,7 +26,7 @@
         <converters:EditingItemTitleConverter x:Key="EditingItemTitleConverter" />
         <converters:SaveButtonTextConverter x:Key="SaveButtonTextConverter" />
     </Window.Resources>
-    <Grid Background="#F3F4F6">
+    <Grid Background="{DynamicResource AppBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -36,20 +36,20 @@
         <!--  Toolbar  -->
         <Border Grid.Row="0"
                 Padding="16,12"
-                Background="White"
-                BorderBrush="#E5E7EB"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}"
                 BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                <Button Margin="0,0,8,0"
+            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Margin="0,0,8,4"
                         Padding="12,6"
                         Command="{Binding AddItemCommand}"
                         Content="+ 新しいアイテム" />
-                <Button Margin="0,0,8,0"
+                <Button Margin="0,0,8,4"
                         Padding="12,6"
-                        Background="#DC2626"
+                        Background="{DynamicResource AppDangerBrush}"
                         BorderThickness="0"
                         Command="{Binding DeleteSelectedItemsCommand}"
-                        Foreground="White"
+                        Foreground="{DynamicResource AppOnAccentBrush}"
                         IsEnabled="{Binding SelectedCount, Converter={StaticResource IntToBoolConverter}, Mode=OneWay}">
                     <TextBlock>
                         <Run Text="削除 (" />
@@ -57,84 +57,84 @@
                         <Run Text=")" />
                     </TextBlock>
                 </Button>
-                <Separator Margin="8,0" />
-                <Button Margin="8,0,8,0"
+                <Separator Margin="8,0,8,4" />
+                <Button Margin="0,0,8,4"
                         Padding="12,6"
                         Command="{Binding ExportDataCommand}"
                         Content="エクスポート" />
-                <Button Margin="0,0,8,0"
+                <Button Margin="0,0,8,4"
                         Padding="12,6"
                         Command="{Binding ImportDataCommand}"
                         Content="インポート" />
-                <Button Margin="0,0,8,0"
+                <Button Margin="0,0,8,4"
                         Padding="12,6"
                         Command="{Binding OpenDataFolderCommand}"
                         Content="データフォルダを開く" />
-                <Separator Margin="8,0" />
-                <Button Padding="12,6"
+                <Separator Margin="8,0,8,4" />
+                <Button Margin="0,0,8,4"
+                        Padding="12,6"
                         Command="{Binding OpenInNewWindowCommand}"
                         Content="別ウィンドウで開く"
                         IsEnabled="{Binding CanOpenInNewWindow}" />
-            </StackPanel>
+                <Button Margin="0,0,0,4"
+                        Padding="12,6"
+                        Command="{Binding ToggleThemeCommand}"
+                        Content="テーマ" />
+            </WrapPanel>
         </Border>
 
         <!--  Filter Bar  -->
         <Border Grid.Row="1"
                 Padding="16,12"
-                Background="#F9FAFB"
-                BorderBrush="#E5E7EB"
+                Background="{DynamicResource AppFilterBarBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}"
                 BorderThickness="0,0,0,1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="200" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <WrapPanel Orientation="Horizontal">
                 <TextBox x:Name="SearchTextBox"
-                        Grid.Column="0"
-                        Margin="0,0,8,0"
+                        MinWidth="200"
+                        Width="300"
+                        Margin="0,0,8,4"
                         Padding="8,6"
                         VerticalContentAlignment="Center"
-                        BorderBrush="#D1D5DB"
+                        BorderBrush="{DynamicResource AppInputBorderBrush}"
                         BorderThickness="1"
                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <ComboBox x:Name="StatusComboBox"
-                            Width="144"
-                            Margin="0,0,8,0"
-                            Padding="8,6"
-                            VerticalContentAlignment="Center"
-                            SelectionChanged="StatusComboBox_SelectionChanged">
-                        <ComboBoxItem Content="" />
-                        <ComboBoxItem Content="未着手" />
-                        <ComboBoxItem Content="進行中" />
-                        <ComboBoxItem Content="完了" />
-                    </ComboBox>
-                    <ComboBox x:Name="PriorityComboBox"
-                            Width="144"
-                            Margin="0,0,8,0"
-                            Padding="8,6"
-                            VerticalContentAlignment="Center"
-                            SelectionChanged="PriorityComboBox_SelectionChanged">
-                        <ComboBoxItem Content="" />
-                        <ComboBoxItem Content="低" />
-                        <ComboBoxItem Content="中" />
-                        <ComboBoxItem Content="高" />
-                    </ComboBox>
-                    <Button Margin="0,0,0,0"
-                            Padding="12,6"
-                            Command="{Binding ClearFiltersCommand}"
-                            Content="クリア"
-                            IsVisible="{Binding SearchText, Converter={StaticResource BoolToVisibilityConverter}}" />
-                </StackPanel>
-            </Grid>
+                <ComboBox x:Name="StatusComboBox"
+                        Width="144"
+                        Margin="0,0,8,4"
+                        Padding="8,6"
+                        VerticalContentAlignment="Center"
+                        SelectionChanged="StatusComboBox_SelectionChanged">
+                    <ComboBoxItem Content="" />
+                    <ComboBoxItem Content="未着手" />
+                    <ComboBoxItem Content="進行中" />
+                    <ComboBoxItem Content="完了" />
+                </ComboBox>
+                <ComboBox x:Name="PriorityComboBox"
+                        Width="144"
+                        Margin="0,0,8,4"
+                        Padding="8,6"
+                        VerticalContentAlignment="Center"
+                        SelectionChanged="PriorityComboBox_SelectionChanged">
+                    <ComboBoxItem Content="" />
+                    <ComboBoxItem Content="低" />
+                    <ComboBoxItem Content="中" />
+                    <ComboBoxItem Content="高" />
+                </ComboBox>
+                <Button Margin="0,0,0,4"
+                        Padding="12,6"
+                        Command="{Binding ClearFiltersCommand}"
+                        Content="クリア"
+                        IsVisible="{Binding SearchText, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </WrapPanel>
         </Border>
 
         <!--  DataGrid  -->
         <DataGrid x:Name="TodoDataGrid"
                 Grid.Row="2"
                 AutoGenerateColumns="False"
-                Background="White"
-                BorderBrush="#E5E7EB"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}"
                 BorderThickness="0,1,0,0"
                 GridLinesVisibility="Horizontal"
                 HeadersVisibility="Column"
@@ -248,17 +248,29 @@
         <Border Grid.Row="0"
                 Grid.RowSpan="3"
                 ZIndex="1000"
-                Background="#80000000"
-                IsVisible="{Binding IsDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                Background="{DynamicResource AppOverlayBrush}"
+                IsVisible="{Binding IsDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}"
+                Opacity="{Binding DialogOpacity}">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+                </Transitions>
+            </Border.Transitions>
             <Border Width="500"
                     MaxHeight="600"
                     Padding="24"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Background="White"
-                    BorderBrush="#E5E7EB"
+                    Background="{DynamicResource AppSurfaceBrush}"
+                    BorderBrush="{DynamicResource AppBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="8">
+                    CornerRadius="8"
+                    Opacity="{Binding DialogOpacity}">
+                <Border.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+                    </Transitions>
+                </Border.Transitions>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -279,7 +291,7 @@
                                     Text="タイトル *" />
                             <TextBox Margin="0,0,0,16"
                                     Padding="8,6"
-                                    BorderBrush="#D1D5DB"
+                                    BorderBrush="{DynamicResource AppInputBorderBrush}"
                                     BorderThickness="1"
                                     MaxLength="200"
                                     Text="{Binding EditingItem.Title, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" />
@@ -290,7 +302,7 @@
                                     Margin="0,0,0,16"
                                     Padding="8,6"
                                     AcceptsReturn="True"
-                                    BorderBrush="#D1D5DB"
+                                    BorderBrush="{DynamicResource AppInputBorderBrush}"
                                     BorderThickness="1"
                                     MaxLength="500"
                                     Text="{Binding EditingItem.Description, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
@@ -305,7 +317,7 @@
                                             FontWeight="SemiBold"
                                             Text="ステータス" />
                                     <ComboBox Padding="8,6"
-                                            BorderBrush="#D1D5DB"
+                                            BorderBrush="{DynamicResource AppInputBorderBrush}"
                                             BorderThickness="1"
                                             ItemsSource="{Binding StatusOptions}"
                                             SelectedItem="{Binding EditingItem.Status}">
@@ -316,7 +328,7 @@
                                             FontWeight="SemiBold"
                                             Text="優先度" />
                                     <ComboBox Padding="8,6"
-                                            BorderBrush="#D1D5DB"
+                                            BorderBrush="{DynamicResource AppInputBorderBrush}"
                                             BorderThickness="1"
                                             ItemsSource="{Binding PriorityOptions}"
                                             SelectedItem="{Binding EditingItem.Priority}">
@@ -340,10 +352,10 @@
                                 Command="{Binding CancelEditCommand}"
                                 Content="キャンセル" />
                         <Button Padding="12,6"
-                                Background="#2563EB"
+                                Background="{DynamicResource AppAccentBrush}"
                                 BorderThickness="0"
                                 Command="{Binding SaveItemCommand}"
-                                Foreground="White">
+                                Foreground="{DynamicResource AppOnAccentBrush}">
                             <TextBlock Text="{Binding EditingItem, Converter={StaticResource SaveButtonTextConverter}}" />
                         </Button>
                     </StackPanel>

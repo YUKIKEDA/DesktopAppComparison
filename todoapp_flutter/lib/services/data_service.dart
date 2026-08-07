@@ -49,6 +49,7 @@ class WindowBounds {
 class DataService {
   static const String _dataFileName = 'project.json';
   static const String _windowFileName = 'window.json';
+  static const String _themeFileName = 'theme.json';
 
   /// データディレクトリのパスを取得
   static Future<Directory> _getDataDirectory() async {
@@ -69,6 +70,42 @@ class DataService {
   static Future<File> _getWindowFile() async {
     final dataDir = await _getDataDirectory();
     return File('${dataDir.path}/$_windowFileName');
+  }
+
+  static Future<File> _getThemeFile() async {
+    final dataDir = await _getDataDirectory();
+    return File('${dataDir.path}/$_themeFileName');
+  }
+
+  /// Load theme preference (`light` | `dark`). Defaults to light.
+  static Future<String> loadTheme() async {
+    try {
+      final file = await _getThemeFile();
+      if (!await file.exists()) {
+        return 'light';
+      }
+      final content = await file.readAsString();
+      final json = jsonDecode(content) as Map<String, dynamic>;
+      final theme = json['theme'] as String?;
+      if (theme == 'dark' || theme == 'light') {
+        return theme!;
+      }
+      return 'light';
+    } catch (e) {
+      debugPrint('Error loading theme: $e');
+      return 'light';
+    }
+  }
+
+  /// Persist theme preference next to project.json.
+  static Future<void> saveTheme(String theme) async {
+    try {
+      final normalized = theme == 'dark' ? 'dark' : 'light';
+      final file = await _getThemeFile();
+      await file.writeAsString(jsonEncode({'theme': normalized}));
+    } catch (e) {
+      debugPrint('Error saving theme: $e');
+    }
   }
 
   /// JSON 文字列を ProjectData にパース（import 系で共有）

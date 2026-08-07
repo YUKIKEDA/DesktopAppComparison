@@ -59,22 +59,22 @@ export function TodoForm({ item, onSubmit, onCancel }: TodoFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
           タイトル <span className="text-red-500">*</span>
         </label>
         <Input {...register("title")} />
         {errors.title && (
-          <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.title.message}</p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
           説明
         </label>
         <Input {...register("description")} />
         {errors.description && (
-          <p className="mt-1 text-sm text-red-600">
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">
             {errors.description.message}
           </p>
         )}
@@ -82,7 +82,7 @@ export function TodoForm({ item, onSubmit, onCancel }: TodoFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
             ステータス
           </label>
           <Select {...register("status")}>
@@ -93,7 +93,7 @@ export function TodoForm({ item, onSubmit, onCancel }: TodoFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
             優先度
           </label>
           <Select {...register("priority")}>
@@ -105,7 +105,7 @@ export function TodoForm({ item, onSubmit, onCancel }: TodoFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
           期限
         </label>
         <Input

@@ -121,30 +121,33 @@ class _TodoTableState extends ConsumerState<TodoTable> {
 
   Widget _buildHeader(String title, String columnId, double width) {
     final isSorted = _sortColumn == columnId;
+    final theme = Theme.of(context);
+    final headerBg = theme.colorScheme.surfaceContainerHighest;
+    final border = theme.dividerColor;
     return GestureDetector(
       onTap: () => _handleSort(columnId),
       child: Container(
         width: width,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+          color: headerBg,
+          border: Border(bottom: BorderSide(color: border)),
         ),
         child: Row(
           children: [
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
-                color: Colors.black87,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             if (isSorted)
               Icon(
                 _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
                 size: 16,
-                color: Colors.grey.shade700,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
           ],
         ),
@@ -163,10 +166,14 @@ class _TodoTableState extends ConsumerState<TodoTable> {
     final someFilteredSelected = sortedItems.any(
       (item) => state.selectedIds.contains(item.id),
     );
+    final theme = Theme.of(context);
+    final headerBg = theme.colorScheme.surfaceContainerHighest;
+    final border = theme.dividerColor;
+    final selectedBg = theme.colorScheme.primary.withValues(alpha: 0.12);
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: border),
       ),
       child: Column(
         children: [
@@ -181,9 +188,9 @@ class _TodoTableState extends ConsumerState<TodoTable> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: headerBg,
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade200),
+                    bottom: BorderSide(color: border),
                   ),
                 ),
                 child: Checkbox(
@@ -224,17 +231,17 @@ class _TodoTableState extends ConsumerState<TodoTable> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: headerBg,
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade200),
+                    bottom: BorderSide(color: border),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   '操作',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: Colors.black87,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -261,7 +268,7 @@ class _TodoTableState extends ConsumerState<TodoTable> {
                         },
                         onDoubleTap: () => widget.onEdit(item),
                         child: Container(
-                          color: isSelected ? Colors.blue.shade50 : null,
+                          color: isSelected ? selectedBg : null,
                           child: Row(
                             children: [
                               // チェックボックス

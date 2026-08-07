@@ -20,6 +20,13 @@ namespace ToDoApp.WinUI
             Title = $"詳細 - {item.Title}";
             AppWindow.Resize(new SizeInt32(520, 560));
 
+            if (Content is FrameworkElement root &&
+                App.Current is App app &&
+                app.MainWindow?.Content is FrameworkElement mainRoot)
+            {
+                root.RequestedTheme = mainRoot.RequestedTheme;
+            }
+
             IdTextBlock.Text = item.Id.ToString();
             TitleTextBox.Text = item.Title;
             DescriptionTextBox.Text = item.Description;

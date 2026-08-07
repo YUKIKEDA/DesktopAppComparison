@@ -9,13 +9,15 @@ namespace ToDoApp.Wpf.Services
 {
     public class DataService : IDataService
     {
-        private static readonly string DataDirectory = Path.Combine(
+        private static readonly string DataDirectoryPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "ToDoApp.Wpf",
             "data"
         );
-        private static readonly string DataFile = Path.Combine(DataDirectory, "project.json");
-        private static readonly string WindowFile = Path.Combine(DataDirectory, "window.json");
+        private static readonly string DataFile = Path.Combine(DataDirectoryPath, "project.json");
+        private static readonly string WindowFile = Path.Combine(DataDirectoryPath, "window.json");
+
+        public string DataDirectory => DataDirectoryPath;
 
         private static JsonSerializerOptions CreateReadOptions() => new()
         {
@@ -32,9 +34,9 @@ namespace ToDoApp.Wpf.Services
 
         private static void EnsureDataDirectory()
         {
-            if (!Directory.Exists(DataDirectory))
+            if (!Directory.Exists(DataDirectoryPath))
             {
-                Directory.CreateDirectory(DataDirectory);
+                Directory.CreateDirectory(DataDirectoryPath);
             }
         }
 

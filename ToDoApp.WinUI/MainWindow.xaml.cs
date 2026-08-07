@@ -25,6 +25,14 @@ namespace ToDoApp.WinUI
         public MainWindow()
         {
             InitializeComponent();
+
+            var themeService = new ThemeService(_dataService.GetDataDirectory());
+            var theme = themeService.LoadTheme();
+            if (Content is FrameworkElement root)
+            {
+                root.RequestedTheme = themeService.ToElementTheme(theme);
+            }
+
             RestoreWindowPosition();
             Closed += MainWindow_Closed;
         }

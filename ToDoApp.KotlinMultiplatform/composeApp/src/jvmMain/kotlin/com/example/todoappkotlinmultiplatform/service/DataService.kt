@@ -25,6 +25,11 @@ data class WindowGeometry(
     val height: Int = 900
 )
 
+@Serializable
+data class ThemeSettings(
+    val theme: String = "light"
+)
+
 class DataService : IDataService {
     private val json = Json {
         prettyPrint = true
@@ -38,6 +43,7 @@ class DataService : IDataService {
     )
     private val dataFile: Path = dataDir.resolve("project.json")
     private val windowFile: Path = dataDir.resolve("window.json")
+    private val themeFile: Path = dataDir.resolve("theme.json")
 
     val dataDirectory: Path get() = dataDir
 
@@ -133,6 +139,31 @@ class DataService : IDataService {
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
+        }
+    }
+
+    override suspend fun loadTheme(): String = withContext(Dispatchers.IO) {
+        try {
+            ensureDataDir()
+            if (!Files.exists(themeFile)) {
+                return@withContext "light"
+            }
+            val content = Files.readString(themeFile)
+            val theme = json.decodeFromString<ThemeSettings>(content).theme
+            if (theme == "dark" || theme == "light") theme else "light"
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "light"
+        }
+    }
+
+    override suspend fun saveTheme(theme: String): Unit = withContext(Dispatchers.IO) {
+        try {
+            ensureDataDir()
+            val normalized = if (theme == "dark") "dark" else "light"
+            Files.writeString(themeFile, json.encodeToString(ThemeSettings(normalized)))
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

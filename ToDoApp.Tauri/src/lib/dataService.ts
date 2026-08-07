@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { openPath } from "@tauri-apps/plugin-opener";
-import type { ProjectData, TodoItem } from "../types";
+import type { ProjectData, ThemeData, TodoItem } from "../types";
 
 export interface WindowBounds {
   x: number;
@@ -45,6 +45,14 @@ function parseProjectData(raw: unknown): ProjectData {
   };
 }
 
+function parseThemeData(raw: unknown): ThemeData {
+  const data = raw as { theme?: string };
+  if (data?.theme === "dark" || data?.theme === "light") {
+    return { theme: data.theme };
+  }
+  return { theme: "light" };
+}
+
 async function getDataDir(): Promise<string> {
   return invoke<string>("get_app_data_dir");
 }
@@ -76,6 +84,29 @@ export class DataService {
       await writeTextFile(dataFile, content);
     } catch (error) {
       console.error("Failed to save data:", error);
+      throw error;
+    }
+  }
+
+  static async loadTheme(): Promise<ThemeData> {
+    try {
+      const dataDir = await getDataDir();
+      const content = await readTextFile(`${dataDir}/theme.json`);
+      return parseThemeData(JSON.parse(content));
+    } catch {
+      return { theme: "light" };
+    }
+  }
+
+  static async saveTheme(data: ThemeData): Promise<void> {
+    try {
+      const dataDir = await getDataDir();
+      await writeTextFile(
+        `${dataDir}/theme.json`,
+        JSON.stringify(data, null, 2)
+      );
+    } catch (error) {
+      console.error("Failed to save theme:", error);
       throw error;
     }
   }

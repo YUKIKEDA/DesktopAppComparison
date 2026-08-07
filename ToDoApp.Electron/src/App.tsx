@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useTodoStore } from "./store/useTodoStore";
 import { DataService } from "./lib/dataService";
+import { applyThemeClass } from "./lib/utils";
 import { Toolbar } from "./components/Toolbar";
 import { FilterBar } from "./components/FilterBar";
 import { TodoTable } from "./components/TodoTable";
@@ -16,6 +17,36 @@ function getDetailItemId(): number | null {
   if (!raw) return null;
   const id = Number(raw);
   return Number.isFinite(id) ? id : null;
+}
+
+function useThemeBootstrap() {
+  const setTheme = useTodoStore((s) => s.setTheme);
+
+  useEffect(() => {
+    const apply = async () => {
+      try {
+        const data = await DataService.loadTheme();
+        setTheme(data.theme);
+        applyThemeClass(data.theme);
+      } catch (error) {
+        console.error("Failed to load theme:", error);
+      }
+    };
+    void apply();
+  }, [setTheme]);
+
+  useEffect(() => {
+    if (!window.electronAPI?.onThemeChanged) return;
+    return window.electronAPI.onThemeChanged(async () => {
+      try {
+        const data = await DataService.loadTheme();
+        setTheme(data.theme);
+        applyThemeClass(data.theme);
+      } catch (error) {
+        console.error("Failed to reload theme:", error);
+      }
+    });
+  }, [setTheme]);
 }
 
 function MainApp() {
@@ -159,8 +190,8 @@ function MainApp() {
 
   return (
     <div
-      className={`h-screen flex flex-col bg-gray-50 ${
-        isDragOver ? "ring-2 ring-inset ring-blue-400" : ""
+      className={`h-screen flex flex-col bg-gray-50 dark:bg-gray-900 ${
+        isDragOver ? "ring-2 ring-inset ring-primary-400" : ""
       }`}
       onDragEnter={(e) => {
         e.preventDefault();
@@ -208,6 +239,7 @@ function MainApp() {
 }
 
 function App() {
+  useThemeBootstrap();
   const detailItemId = getDetailItemId();
   if (detailItemId != null) {
     return <DetailWindow itemId={detailItemId} />;

@@ -2,8 +2,10 @@ import { Button } from "./ui/Button";
 import { useTodoStore } from "../store/useTodoStore";
 import { DataService } from "../lib/dataService";
 import { openDetailWindow } from "../lib/windowService";
+import { applyThemeClass } from "../lib/utils";
 import { useEffect, useCallback } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
+import { emit } from "@tauri-apps/api/event";
 import type { TodoItem } from "../types";
 
 interface ToolbarProps {
@@ -11,7 +13,7 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ onEditItem }: ToolbarProps) {
-  const { items, selectedIds, deleteItems, setItems, setLoading } =
+  const { items, selectedIds, deleteItems, setItems, setLoading, theme, setTheme } =
     useTodoStore();
 
   const handleAdd = useCallback(() => {
@@ -92,6 +94,18 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
     }
   };
 
+  const handleToggleTheme = async () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    applyThemeClass(next);
+    try {
+      await DataService.saveTheme({ theme: next });
+      await emit("theme-changed");
+    } catch (error) {
+      console.error("Failed to save theme:", error);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -121,7 +135,7 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
 
   return (
     <>
-      <div className="flex items-center gap-2 p-4 bg-white/95 border-b border-gray-200">
+      <div className="flex flex-wrap items-center gap-2 p-4 bg-white/95 border-b border-gray-200 dark:bg-gray-800/95 dark:border-gray-700">
         <Button onClick={() => handleAdd()}>+ 新しいアイテム</Button>
         <Button
           variant="destructive"
@@ -137,7 +151,10 @@ export function Toolbar({ onEditItem }: ToolbarProps) {
         >
           別ウィンドウで開く
         </Button>
-        <div className="flex-1" />
+        <div className="flex-1 min-w-[1rem]" />
+        <Button variant="outline" onClick={handleToggleTheme}>
+          {theme === "light" ? "ダーク" : "ライト"}
+        </Button>
         <Button variant="outline" onClick={handleExport}>
           エクスポート
         </Button>

@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { useTodoStore } from "./store/useTodoStore";
 import { DataService } from "./lib/dataService";
+import { applyThemeClass } from "./lib/utils";
 import { Toolbar } from "./components/Toolbar";
 import { FilterBar } from "./components/FilterBar";
 import { TodoTable } from "./components/TodoTable";
@@ -19,6 +20,41 @@ function getDetailItemId(): number | null {
   if (!raw) return null;
   const id = Number(raw);
   return Number.isFinite(id) ? id : null;
+}
+
+function useThemeBootstrap() {
+  const setTheme = useTodoStore((s) => s.setTheme);
+
+  useEffect(() => {
+    const apply = async () => {
+      try {
+        const data = await DataService.loadTheme();
+        setTheme(data.theme);
+        applyThemeClass(data.theme);
+      } catch (error) {
+        console.error("Failed to load theme:", error);
+      }
+    };
+    void apply();
+  }, [setTheme]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen("theme-changed", async () => {
+      try {
+        const data = await DataService.loadTheme();
+        setTheme(data.theme);
+        applyThemeClass(data.theme);
+      } catch (error) {
+        console.error("Failed to reload theme:", error);
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [setTheme]);
 }
 
 function MainApp() {
@@ -97,14 +133,22 @@ function MainApp() {
           opacity: 0.95,
         });
         if (!applied) {
-          document.documentElement.style.backgroundColor =
-            "rgba(249, 250, 251, 0.95)";
-          document.body.style.backgroundColor = "rgba(249, 250, 251, 0.95)";
+          const theme = useTodoStore.getState().theme;
+          const color =
+            theme === "dark"
+              ? "rgba(17, 24, 39, 0.95)"
+              : "rgba(249, 250, 251, 0.95)";
+          document.documentElement.style.backgroundColor = color;
+          document.body.style.backgroundColor = color;
         }
       } catch {
-        document.documentElement.style.backgroundColor =
-          "rgba(249, 250, 251, 0.95)";
-        document.body.style.backgroundColor = "rgba(249, 250, 251, 0.95)";
+        const theme = useTodoStore.getState().theme;
+        const color =
+          theme === "dark"
+            ? "rgba(17, 24, 39, 0.95)"
+            : "rgba(249, 250, 251, 0.95)";
+        document.documentElement.style.backgroundColor = color;
+        document.body.style.backgroundColor = color;
       }
     })();
   }, []);
@@ -231,8 +275,8 @@ function MainApp() {
 
   return (
     <div
-      className={`h-screen flex flex-col bg-gray-50/95 ${
-        isDragOver ? "ring-2 ring-inset ring-blue-400" : ""
+      className={`h-screen flex flex-col bg-gray-50/95 dark:bg-gray-900/95 ${
+        isDragOver ? "ring-2 ring-inset ring-primary-400" : ""
       }`}
     >
       <Toolbar onEditItem={handleEdit} />
@@ -259,6 +303,7 @@ function MainApp() {
 }
 
 function App() {
+  useThemeBootstrap();
   const detailItemId = getDetailItemId();
   if (detailItemId != null) {
     return <DetailWindow itemId={detailItemId} />;

@@ -11,6 +11,7 @@ import com.example.todoappkotlinmultiplatform.model.FilterValue
 import com.example.todoappkotlinmultiplatform.model.TodoPriority
 import com.example.todoappkotlinmultiplatform.model.TodoStatus
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FilterBar(
     filters: List<FilterConfig>,
@@ -21,7 +22,6 @@ fun FilterBar(
     var statusFilter by remember { mutableStateOf<List<String>>(emptyList()) }
     var priorityFilter by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // Initialize from existing filters (only once)
     var initialized by remember { mutableStateOf(false) }
     LaunchedEffect(filters) {
         if (!initialized) {
@@ -43,7 +43,6 @@ fun FilterBar(
         }
     }
 
-    // Apply filters when values change
     LaunchedEffect(searchText, statusFilter, priorityFilter) {
         val newFilters = mutableListOf<FilterConfig>()
 
@@ -86,20 +85,20 @@ fun FilterBar(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedTextField(
                 value = searchText,
                 onValueChange = { searchText = it },
                 placeholder = { Text("タイトル・説明で検索...") },
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                    .widthIn(min = 180.dp, max = 420.dp)
+                    .defaultMinSize(minWidth = 220.dp),
                 singleLine = true
             )
 

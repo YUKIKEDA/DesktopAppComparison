@@ -117,8 +117,8 @@ export function FilterBar() {
     priorityFilter.length > 0;
 
   return (
-    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 shrink-0">
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 shrink-0 dark:bg-gray-900 dark:border-gray-700">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-[200px]">
           <Input
             type="text"
@@ -129,7 +129,7 @@ export function FilterBar() {
           />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <Select
             value={statusFilter[0] || ""}
             onChange={handleStatusChange}

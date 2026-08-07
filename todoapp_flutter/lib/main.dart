@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'providers/todo_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/data_service.dart';
+import 'theme/app_theme.dart';
 import 'widgets/toolbar.dart';
 import 'widgets/filter_bar.dart';
 import 'widgets/todo_table.dart';
@@ -58,17 +60,17 @@ Future<void> main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
     return MaterialApp(
       title: 'Todo App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeMode,
       home: const TodoAppPage(),
     );
   }
@@ -277,7 +279,6 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
               }
             },
             child: Scaffold(
-              backgroundColor: Colors.grey.shade50,
               body: Stack(
                 children: [
                   Column(

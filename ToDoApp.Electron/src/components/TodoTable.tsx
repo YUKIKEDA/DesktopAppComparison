@@ -228,20 +228,20 @@ export function TodoTable({ onEdit }: TodoTableProps) {
       : 0;
 
   return (
-    <div className="h-full flex flex-col border border-gray-200 overflow-hidden">
+    <div className="h-full flex flex-col border border-gray-200 overflow-hidden dark:border-gray-700 dark:bg-gray-900">
       <div
         ref={tableContainerRef}
         className="flex-1 overflow-auto"
         style={{ contain: "strict" }}
       >
         <table className="w-full border-collapse table-fixed">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+          <thead className="bg-gray-50 sticky top-0 z-10 dark:bg-gray-800">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200"
+                    className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200 dark:text-gray-200 dark:border-gray-700"
                     style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder ? null : (
@@ -249,7 +249,7 @@ export function TodoTable({ onEdit }: TodoTableProps) {
                         className={cn(
                           "flex items-center gap-2",
                           header.column.getCanSort() &&
-                            "cursor-pointer select-none hover:text-gray-900"
+                            "cursor-pointer select-none hover:text-gray-900 dark:hover:text-white"
                         )}
                         onClick={header.column.getToggleSortingHandler()}
                       >
@@ -285,8 +285,9 @@ export function TodoTable({ onEdit }: TodoTableProps) {
                 <tr
                   key={row.id}
                   className={cn(
-                    "border-b border-gray-100 hover:bg-gray-50 cursor-pointer",
-                    selectedIds.has(row.original.id) && "bg-blue-50"
+                    "border-b border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-800 dark:hover:bg-gray-800/80 dark:text-gray-100",
+                    selectedIds.has(row.original.id) &&
+                      "bg-primary-50 dark:bg-primary-950/60"
                   )}
                   style={{
                     height: `${virtualRow.size}px`,

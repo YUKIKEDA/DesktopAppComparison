@@ -1,9 +1,11 @@
-import { ProjectData } from "./index";
+import { ProjectData, ThemeData } from "./index";
 
 export interface ElectronAPI {
   // Data operations
   loadData: () => Promise<ProjectData>;
   saveData: (data: ProjectData) => Promise<void>;
+  loadTheme: () => Promise<ThemeData>;
+  saveTheme: (data: ThemeData) => Promise<void>;
 
   // File operations
   exportData: (data: ProjectData) => Promise<void>;
@@ -15,6 +17,7 @@ export interface ElectronAPI {
   openDetailWindow: (itemId: number) => Promise<void>;
   getPathForFile: (file: File) => string;
   onDataChanged: (callback: () => void) => () => void;
+  onThemeChanged: (callback: () => void) => () => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

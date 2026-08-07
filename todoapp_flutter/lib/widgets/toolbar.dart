@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/todo_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/data_service.dart';
 import '../models/todo_item.dart';
 import '../models/project_data.dart';
+import '../theme/app_theme.dart';
 
 class Toolbar extends ConsumerStatefulWidget {
   final Function(TodoItem?) onEditItem;
@@ -18,17 +20,6 @@ class Toolbar extends ConsumerStatefulWidget {
 }
 
 class _ToolbarState extends ConsumerState<Toolbar> {
-  @override
-  void initState() {
-    super.initState();
-    // キーボードショートカットを設定
-    _setupKeyboardShortcuts();
-  }
-
-  void _setupKeyboardShortcuts() {
-    // この実装は後でmain.dartで行う
-  }
-
   Future<void> _handleAdd() async {
     widget.onEditItem(null);
   }
@@ -49,7 +40,7 @@ class _ToolbarState extends ConsumerState<Toolbar> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.brandRed),
             child: const Text('削除'),
           ),
         ],
@@ -109,53 +100,63 @@ class _ToolbarState extends ConsumerState<Toolbar> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(todoProvider);
+    final themeMode = ref.watch(themeProvider);
     final selectedCount = state.selectedIds.length;
+    final theme = Theme.of(context);
+    final isDark = themeMode == ThemeMode.dark;
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        color: theme.colorScheme.surface,
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           ElevatedButton.icon(
             onPressed: _handleAdd,
             icon: const Icon(Icons.add, size: 18),
             label: const Text('新しいアイテム'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade600,
+              backgroundColor: AppColors.brandBlue,
               foregroundColor: Colors.white,
             ),
           ),
-          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: selectedCount > 0 ? _handleDelete : null,
             icon: const Icon(Icons.delete, size: 18),
             label: Text('削除 ($selectedCount)'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
+              backgroundColor: AppColors.brandRed,
               foregroundColor: Colors.white,
+              disabledBackgroundColor:
+                  AppColors.brandRed.withValues(alpha: 0.4),
+              disabledForegroundColor: Colors.white70,
             ),
           ),
-          const Spacer(),
           OutlinedButton(
             onPressed: _handleExport,
             child: const Text('エクスポート'),
           ),
-          const SizedBox(width: 8),
           OutlinedButton(
             onPressed: _handleImport,
             child: const Text('インポート'),
           ),
-          const SizedBox(width: 8),
           OutlinedButton(
             onPressed: _handleOpenDataFolder,
             child: const Text('データフォルダを開く'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => ref.read(themeProvider.notifier).toggle(),
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, size: 18),
+            label: Text(isDark ? 'テーマ: ダーク' : 'テーマ: ライト'),
           ),
         ],
       ),
     );
   }
 }
-

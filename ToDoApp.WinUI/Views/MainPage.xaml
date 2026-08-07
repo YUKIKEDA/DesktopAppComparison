@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:localControls="using:ToDoApp.WinUI.Controls"
     xmlns:converters="using:ToDoApp.WinUI.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -20,11 +21,17 @@
 
     <Grid
         AllowDrop="True"
+        Background="{ThemeResource AppBackgroundBrush}"
         DataContext="{x:Bind ViewModel}"
         DragOver="Root_DragOver"
         Drop="Root_Drop"
         KeyDown="Grid_KeyDown"
         Loaded="Grid_Loaded">
+        <Grid.ChildrenTransitions>
+            <TransitionCollection>
+                <EntranceThemeTransition FromVerticalOffset="8" IsStaggeringEnabled="False" />
+            </TransitionCollection>
+        </Grid.ChildrenTransitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -35,18 +42,18 @@
         <Border
             Grid.Row="0"
             Padding="16,12"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            Background="{ThemeResource AppSurfaceBrush}"
+            BorderBrush="{ThemeResource AppBorderBrush}"
             BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <localControls:WrapPanel ItemSpacing="8" LineSpacing="8">
                 <Button
                     Click="AddButton_Click"
                     Content="+ 新しいアイテム"
-                    Style="{ThemeResource AccentButtonStyle}" />
+                    Style="{StaticResource BrandAccentButtonStyle}" />
                 <Button
                     Click="DeleteButton_Click"
                     IsEnabled="{x:Bind ViewModel.SelectedIds.Count, Mode=OneWay, Converter={StaticResource IntToBoolConverter}}"
-                    Style="{ThemeResource DefaultButtonStyle}">
+                    Style="{StaticResource BrandDangerButtonStyle}">
                     <Button.Content>
                         <TextBlock>
                             <Run Text="削除 (" />
@@ -62,8 +69,8 @@
                     Style="{ThemeResource DefaultButtonStyle}" />
                 <Border
                     Width="1"
-                    Margin="8,0"
-                    Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                    Height="24"
+                    Background="{ThemeResource AppBorderBrush}" />
                 <Button
                     Command="{x:Bind ViewModel.ExportDataCommand}"
                     Content="エクスポート"
@@ -76,20 +83,25 @@
                     Command="{x:Bind ViewModel.OpenDataFolderCommand}"
                     Content="データフォルダを開く"
                     Style="{ThemeResource DefaultButtonStyle}" />
-            </StackPanel>
+                <Button
+                    Click="ThemeButton_Click"
+                    Content="テーマ"
+                    Style="{ThemeResource DefaultButtonStyle}" />
+            </localControls:WrapPanel>
         </Border>
 
         <!--  Filter Bar  -->
         <Border
             Grid.Row="1"
             Padding="16,12"
-            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            Background="{ThemeResource AppFilterBarBrush}"
+            BorderBrush="{ThemeResource AppBorderBrush}"
             BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <localControls:WrapPanel ItemSpacing="8" LineSpacing="8">
                 <TextBox
                     x:Name="SearchTextBox"
                     Width="300"
+                    MinWidth="200"
                     HorizontalAlignment="Left"
                     PlaceholderText="タイトル・説明で検索..."
                     Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -116,7 +128,7 @@
                     Content="クリア"
                     Style="{ThemeResource DefaultButtonStyle}"
                     Visibility="{x:Bind ViewModel.HasActiveFilters, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-            </StackPanel>
+            </localControls:WrapPanel>
         </Border>
 
         <!--  DataGrid  -->
@@ -124,6 +136,7 @@
             <controls:DataGrid
                 x:Name="TodoDataGrid"
                 AutoGenerateColumns="False"
+                Background="{ThemeResource AppSurfaceBrush}"
                 CanUserReorderColumns="True"
                 CanUserResizeColumns="True"
                 CanUserSortColumns="True"
@@ -241,4 +254,3 @@
         </ContentDialog>
     </Grid>
 </UserControl>
-

@@ -15,17 +15,41 @@ namespace ToDoApp.WinUI.Views
     public sealed partial class MainPage : UserControl
     {
         public MainWindowViewModel ViewModel { get; }
+        private readonly ThemeService _themeService;
 
         public MainPage()
         {
             InitializeComponent();
-            ViewModel = new MainWindowViewModel(new DataService());
+            var dataService = new DataService();
+            _themeService = new ThemeService(dataService.GetDataDirectory());
+            ViewModel = new MainWindowViewModel(dataService);
         }
 
         private async void Grid_Loaded(object sender, RoutedEventArgs e)
         {
+            var theme = _themeService.LoadTheme();
+            ApplyLoadedTheme(theme);
             await ViewModel.LoadDataAsync();
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        }
+
+        private void ApplyLoadedTheme(string theme)
+        {
+            var elementTheme = _themeService.ToElementTheme(theme);
+            RequestedTheme = elementTheme;
+
+            if (App.Current is App app && app.MainWindow?.Content is FrameworkElement windowContent)
+            {
+                windowContent.RequestedTheme = elementTheme;
+            }
+        }
+
+        private void ThemeButton_Click(object sender, RoutedEventArgs e)
+        {
+            var next = _themeService.ToggleTheme(
+                App.Current is App app ? app.MainWindow : null,
+                this);
+            RequestedTheme = _themeService.ToElementTheme(next);
         }
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

@@ -1,5 +1,6 @@
 package com.example.todoappkotlinmultiplatform
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.focusable
 import androidx.compose.material3.*
@@ -8,6 +9,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
 import com.example.todoappkotlinmultiplatform.ui.components.*
+import com.example.todoappkotlinmultiplatform.ui.theme.AppThemeMode
+import com.example.todoappkotlinmultiplatform.ui.theme.DarkColorScheme
+import com.example.todoappkotlinmultiplatform.ui.theme.LightColorScheme
 import com.example.todoappkotlinmultiplatform.model.TodoItem
 import com.example.todoappkotlinmultiplatform.viewmodel.TodoViewModel
 
@@ -16,7 +20,11 @@ fun App(
     viewModel: TodoViewModel,
     onOpenInNewWindow: (Int) -> Unit = {}
 ) {
-    MaterialTheme {
+    val theme by viewModel.theme.collectAsState()
+    val isDark = AppThemeMode.fromStorage(theme) == AppThemeMode.DARK
+    val colorScheme = if (isDark) DarkColorScheme else LightColorScheme
+
+    MaterialTheme(colorScheme = colorScheme) {
         val items by viewModel.items.collectAsState()
         val selectedIds by viewModel.selectedIds.collectAsState()
         val filters by viewModel.filters.collectAsState()
@@ -30,95 +38,105 @@ fun App(
             viewModel.getFilteredItems()
         }
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .onKeyEvent { keyEvent ->
-                    if (keyEvent.type == KeyEventType.KeyDown) {
-                        when {
-                            (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.N -> {
-                                editingItem = null
-                                isDialogOpen = true
-                                true
-                            }
-                            (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.S -> {
-                                viewModel.saveData()
-                                true
-                            }
-                            (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.F -> {
-                                false
-                            }
-                            keyEvent.key == Key.Delete && selectedIds.isNotEmpty() -> {
-                                viewModel.deleteItems(selectedIds.toList())
-                                true
-                            }
-                            else -> false
-                        }
-                    } else {
-                        false
-                    }
-                }
-                .focusable()
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            Toolbar(
-                selectedCount = selectedIds.size,
-                onAddClick = {
-                    editingItem = null
-                    isDialogOpen = true
-                },
-                onDeleteClick = {
-                    if (selectedIds.isNotEmpty()) {
-                        viewModel.deleteItems(selectedIds.toList())
-                    }
-                },
-                onExportClick = {
-                    viewModel.exportData()
-                },
-                onImportClick = {
-                    viewModel.importData()
-                },
-                onOpenDataFolderClick = {
-                    viewModel.openDataFolder()
-                },
-                onOpenInNewWindowClick = {
-                    val id = selectedIds.singleOrNull()
-                    if (id != null) {
-                        onOpenInNewWindow(id)
-                    }
-                }
-            )
-
-            FilterBar(
-                filters = filters,
-                onFiltersChange = { viewModel.setFilters(it) }
-            )
-
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(8.dp)
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.Center)
-                    )
-                } else {
-                    TodoTable(
-                        items = filteredItems,
-                        selectedIds = selectedIds,
-                        sorts = sorts,
-                        onToggleSelection = { viewModel.toggleSelection(it) },
-                        onSelectAll = { viewModel.selectAll(it) },
-                        onDeselectAll = { viewModel.deselectAll(it) },
-                        onEdit = { item ->
-                            editingItem = item
-                            isDialogOpen = true
-                        },
-                        onSortClick = { columnId ->
-                            viewModel.toggleSort(columnId)
+                    .fillMaxSize()
+                    .onKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            when {
+                                (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.N -> {
+                                    editingItem = null
+                                    isDialogOpen = true
+                                    true
+                                }
+                                (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.S -> {
+                                    viewModel.saveData()
+                                    true
+                                }
+                                (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) && keyEvent.key == Key.F -> {
+                                    false
+                                }
+                                keyEvent.key == Key.Delete && selectedIds.isNotEmpty() -> {
+                                    viewModel.deleteItems(selectedIds.toList())
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else {
+                            false
                         }
-                    )
+                    }
+                    .focusable()
+            ) {
+                Toolbar(
+                    selectedCount = selectedIds.size,
+                    isDarkTheme = isDark,
+                    onAddClick = {
+                        editingItem = null
+                        isDialogOpen = true
+                    },
+                    onDeleteClick = {
+                        if (selectedIds.isNotEmpty()) {
+                            viewModel.deleteItems(selectedIds.toList())
+                        }
+                    },
+                    onExportClick = {
+                        viewModel.exportData()
+                    },
+                    onImportClick = {
+                        viewModel.importData()
+                    },
+                    onOpenDataFolderClick = {
+                        viewModel.openDataFolder()
+                    },
+                    onThemeToggleClick = {
+                        viewModel.toggleTheme()
+                    },
+                    onOpenInNewWindowClick = {
+                        val id = selectedIds.singleOrNull()
+                        if (id != null) {
+                            onOpenInNewWindow(id)
+                        }
+                    }
+                )
+
+                FilterBar(
+                    filters = filters,
+                    onFiltersChange = { viewModel.setFilters(it) }
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(8.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(androidx.compose.ui.Alignment.Center)
+                        )
+                    } else {
+                        TodoTable(
+                            items = filteredItems,
+                            selectedIds = selectedIds,
+                            sorts = sorts,
+                            onToggleSelection = { viewModel.toggleSelection(it) },
+                            onSelectAll = { viewModel.selectAll(it) },
+                            onDeselectAll = { viewModel.deselectAll(it) },
+                            onEdit = { item ->
+                                editingItem = item
+                                isDialogOpen = true
+                            },
+                            onSortClick = { columnId ->
+                                viewModel.toggleSort(columnId)
+                            }
+                        )
+                    }
                 }
             }
 
@@ -157,11 +175,18 @@ fun DetailWindowContent(
     viewModel: TodoViewModel,
     onClose: () -> Unit
 ) {
-    MaterialTheme {
+    val theme by viewModel.theme.collectAsState()
+    val isDark = AppThemeMode.fromStorage(theme) == AppThemeMode.DARK
+    val colorScheme = if (isDark) DarkColorScheme else LightColorScheme
+
+    MaterialTheme(colorScheme = colorScheme) {
         val items by viewModel.items.collectAsState()
         val item = items.find { it.id == itemId }
 
-        Surface(modifier = Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
             if (item == null) {
                 Column(
                     modifier = Modifier

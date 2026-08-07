@@ -7,4 +7,6 @@ interface IDataService {
     suspend fun importData(): Result<ProjectData>
     suspend fun importFromPath(path: String): Result<ProjectData>
     suspend fun openDataFolder(): Result<Unit>
+    suspend fun loadTheme(): String
+    suspend fun saveTheme(theme: String)
 }

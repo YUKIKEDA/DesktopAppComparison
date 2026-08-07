@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { TodoItem, SortConfig, FilterConfig } from "../types";
+import type { TodoItem, SortConfig, FilterConfig, ThemeMode } from "../types";
 
 interface TodoStore {
   items: TodoItem[];
@@ -7,6 +7,7 @@ interface TodoStore {
   filters: FilterConfig[];
   sorts: SortConfig[];
   isLoading: boolean;
+  theme: ThemeMode;
 
   // Actions
   setItems: (items: TodoItem[]) => void;
@@ -21,6 +22,7 @@ interface TodoStore {
   setFilters: (filters: FilterConfig[]) => void;
   setSorts: (sorts: SortConfig[]) => void;
   setLoading: (loading: boolean) => void;
+  setTheme: (theme: ThemeMode) => void;
 }
 
 export const useTodoStore = create<TodoStore>((set, get) => ({
@@ -29,6 +31,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   filters: [],
   sorts: [],
   isLoading: false,
+  theme: "light",
 
   setItems: (items) => set({ items }),
 
@@ -90,5 +93,6 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   setSorts: (sorts) => set({ sorts }),
 
   setLoading: (isLoading) => set({ isLoading }),
-}));
 
+  setTheme: (theme) => set({ theme }),
+}));

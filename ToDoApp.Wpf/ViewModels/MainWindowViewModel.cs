@@ -13,6 +13,7 @@ namespace ToDoApp.Wpf.ViewModels
     public partial class MainWindowViewModel : ObservableObject
     {
         private readonly IDataService _dataService;
+        private readonly ThemeService _themeService;
         private readonly System.Timers.Timer? _autoSaveTimer;
 
         [ObservableProperty]
@@ -54,6 +55,9 @@ namespace ToDoApp.Wpf.ViewModels
         [ObservableProperty]
         private bool _isDialogOpen;
 
+        [ObservableProperty]
+        private bool _isDarkTheme;
+
         private string _sortColumn = string.Empty;
 
         public string SortColumn
@@ -94,9 +98,14 @@ namespace ToDoApp.Wpf.ViewModels
         public MainWindowViewModel(IDataService dataService)
         {
             _dataService = dataService;
+            _themeService = new ThemeService(dataService.DataDirectory);
             _filteredItems = new ObservableCollection<TodoItem>();
             _itemsView = CollectionViewSource.GetDefaultView(_filteredItems);
             _itemsView.SortDescriptions.Add(new SortDescription("Id", ListSortDirection.Ascending));
+
+            var theme = _themeService.LoadTheme();
+            _themeService.ApplyTheme(theme);
+            IsDarkTheme = theme == "dark";
 
             // 自動保存タイマーの設定（2秒のデバウンス）
             _autoSaveTimer = new System.Timers.Timer(2000);
@@ -115,6 +124,13 @@ namespace ToDoApp.Wpf.ViewModels
 
             // 初期データ読み込み
             LoadDataCommand.Execute(null);
+        }
+
+        [RelayCommand]
+        private void ToggleTheme()
+        {
+            var theme = _themeService.ToggleTheme();
+            IsDarkTheme = theme == "dark";
         }
 
         private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)

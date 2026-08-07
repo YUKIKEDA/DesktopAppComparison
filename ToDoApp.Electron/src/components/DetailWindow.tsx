@@ -67,26 +67,26 @@ export function DetailWindow({ itemId }: DetailWindowProps) {
 
   if (error) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 p-6">
-        <p className="text-red-600">{error}</p>
+      <div className="h-screen flex items-center justify-center bg-gray-50 p-6 dark:bg-gray-900">
+        <p className="text-red-600 dark:text-red-400">{error}</p>
       </div>
     );
   }
 
   if (!item) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 p-6">
-        <p className="text-gray-500">読み込み中...</p>
+      <div className="h-screen flex items-center justify-center bg-gray-50 p-6 dark:bg-gray-900">
+        <p className="text-gray-500 dark:text-gray-400">読み込み中...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen overflow-auto bg-gray-50 p-6">
-      <h1 className="text-lg font-semibold text-gray-900 mb-4">
+    <div className="h-screen overflow-auto bg-gray-50 p-6 dark:bg-gray-900">
+      <h1 className="text-lg font-semibold text-gray-900 mb-4 dark:text-gray-100">
         アイテム詳細 #{item.id}
       </h1>
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 dark:bg-gray-800 dark:border-gray-700">
         <TodoForm
           key={item.updatedAt}
           item={item}

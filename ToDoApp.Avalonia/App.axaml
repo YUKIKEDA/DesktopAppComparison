@@ -3,14 +3,47 @@
              x:Class="ToDoApp.Avalonia.App"
              xmlns:local="using:ToDoApp.Avalonia"
              RequestedThemeVariant="Light">
-             <!-- "Light" theme to match Electron app design -->
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F3F4F6" />
+                    <SolidColorBrush x:Key="AppSurfaceBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AppFilterBarBrush" Color="#F9FAFB" />
+                    <SolidColorBrush x:Key="AppBorderBrush" Color="#E5E7EB" />
+                    <SolidColorBrush x:Key="AppInputBorderBrush" Color="#D1D5DB" />
+                    <SolidColorBrush x:Key="AppRowHoverBrush" Color="#EFF6FF" />
+                    <SolidColorBrush x:Key="AppAccentBrush" Color="#2563EB" />
+                    <SolidColorBrush x:Key="AppDangerBrush" Color="#DC2626" />
+                    <SolidColorBrush x:Key="AppOnAccentBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AppOverlayBrush" Color="#80000000" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#111827" />
+                    <SolidColorBrush x:Key="AppSurfaceBrush" Color="#1F2937" />
+                    <SolidColorBrush x:Key="AppFilterBarBrush" Color="#1F2937" />
+                    <SolidColorBrush x:Key="AppBorderBrush" Color="#374151" />
+                    <SolidColorBrush x:Key="AppInputBorderBrush" Color="#4B5563" />
+                    <SolidColorBrush x:Key="AppRowHoverBrush" Color="#1E3A5F" />
+                    <SolidColorBrush x:Key="AppAccentBrush" Color="#2563EB" />
+                    <SolidColorBrush x:Key="AppDangerBrush" Color="#DC2626" />
+                    <SolidColorBrush x:Key="AppOnAccentBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AppOverlayBrush" Color="#80000000" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
   
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <Style Selector="DataGridRow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource AppRowHoverBrush}" />
+        </Style>
     </Application.Styles>
 </Application>

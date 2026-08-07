@@ -30,7 +30,6 @@ class _FilterBarState extends ConsumerState<FilterBar> {
   void _applyFilters() {
     final filters = <FilterConfig>[];
 
-    // テキスト検索フィルタ
     if (_searchController.text.trim().isNotEmpty) {
       filters.add(
         FilterConfig(
@@ -41,7 +40,6 @@ class _FilterBarState extends ConsumerState<FilterBar> {
       );
     }
 
-    // ステータスフィルタ
     if (_statusFilter != null && _statusFilter!.isNotEmpty) {
       filters.add(
         FilterConfig(
@@ -52,7 +50,6 @@ class _FilterBarState extends ConsumerState<FilterBar> {
       );
     }
 
-    // 優先度フィルタ
     if (_priorityFilter != null && _priorityFilter!.isNotEmpty) {
       filters.add(
         FilterConfig(
@@ -81,30 +78,38 @@ class _FilterBarState extends ConsumerState<FilterBar> {
         _searchController.text.trim().isNotEmpty ||
         (_statusFilter != null && _statusFilter!.isNotEmpty) ||
         (_priorityFilter != null && _priorityFilter!.isNotEmpty);
+    final theme = Theme.of(context);
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        color: theme.colorScheme.surfaceContainerHighest,
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'タイトル・説明で検索...',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 180, maxWidth: 420),
+            child: SizedBox(
+              width: 320,
+              child: TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  hintText: 'タイトル・説明で検索...',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  isDense: true,
                 ),
-                isDense: true,
               ),
             ),
           ),
-          const SizedBox(width: 8),
           SizedBox(
             width: 160,
             child: DropdownButtonFormField<String>(
@@ -133,7 +138,6 @@ class _FilterBarState extends ConsumerState<FilterBar> {
               },
             ),
           ),
-          const SizedBox(width: 8),
           SizedBox(
             width: 160,
             child: DropdownButtonFormField<String>(
@@ -162,8 +166,7 @@ class _FilterBarState extends ConsumerState<FilterBar> {
               },
             ),
           ),
-          if (hasActiveFilters) ...[
-            const SizedBox(width: 8),
+          if (hasActiveFilters)
             OutlinedButton(
               onPressed: _clearFilters,
               style: OutlinedButton.styleFrom(
@@ -174,7 +177,6 @@ class _FilterBarState extends ConsumerState<FilterBar> {
               ),
               child: const Text('クリア'),
             ),
-          ],
         ],
       ),
     );

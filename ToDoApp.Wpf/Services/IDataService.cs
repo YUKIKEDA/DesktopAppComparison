@@ -4,6 +4,7 @@ namespace ToDoApp.Wpf.Services
 {
     public interface IDataService
     {
+        string DataDirectory { get; }
         Task<ProjectData> LoadDataAsync();
         Task SaveDataAsync(ProjectData data);
         Task ExportDataAsync(ProjectData data);

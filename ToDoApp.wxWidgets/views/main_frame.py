@@ -10,6 +10,7 @@ from views.todo_table import TodoTable
 from views.todo_form_dialog import TodoFormDialog
 from views.detail_frame import TodoDetailFrame
 from models.todo_item import TodoItem
+from utils.theme import get_theme
 
 
 class JsonFileDropTarget(wx.FileDropTarget):
@@ -45,6 +46,7 @@ class MainFrame(wx.Frame):
             print("MainFrame.__init__: Controller created")
 
             self._detail_frames = {}
+            self._theme_name = self.controller.load_theme()
 
             print("MainFrame.__init__: Adding callback...")
             self.controller.add_callback(self._on_data_changed)
@@ -112,6 +114,7 @@ class MainFrame(wx.Frame):
             # Toolbar
             self.toolbar = Toolbar(panel, self.controller)
             self.toolbar.set_on_open_in_new_window(self._on_open_in_new_window)
+            self.toolbar.set_on_theme_toggle(self._on_theme_toggle)
             main_sizer.Add(self.toolbar, flag=wx.EXPAND)
             print("_create_ui: Toolbar created")
 
@@ -130,11 +133,15 @@ class MainFrame(wx.Frame):
 
             print("_create_ui: Setting sizer...")
             panel.SetSizer(main_sizer)
+            self._main_panel = panel
 
             print("_create_ui: Creating status bar...")
             # Status bar
             self.CreateStatusBar()
             self.SetStatusText("準備完了")
+
+            print("_create_ui: Applying theme...")
+            self._apply_theme()
             print("_create_ui: UI creation complete")
         except Exception as e:
             error_msg = f"UI作成エラー: {e}\n\n{traceback.format_exc()}"
@@ -182,6 +189,33 @@ class MainFrame(wx.Frame):
                 self.SetTransparent(242)
         except Exception as e:
             print(f"Transparency not applied: {e}", file=sys.stderr)
+
+    def _apply_theme(self) -> None:
+        """Apply light/dark palette to main window controls."""
+        colors = get_theme(self._theme_name)
+        self.SetBackgroundColour(colors.bg)
+        if hasattr(self, "_main_panel") and self._main_panel:
+            self._main_panel.SetBackgroundColour(colors.bg)
+            self._main_panel.SetForegroundColour(colors.text)
+        self.toolbar.apply_theme(colors)
+        self.filter_bar.apply_theme(colors)
+        try:
+            self.table.SetBackgroundColour(colors.surface)
+            self.table.SetForegroundColour(colors.text)
+            self.table.Refresh()
+        except Exception:
+            pass
+        self.Refresh()
+        self.Update()
+
+    def _on_theme_toggle(self) -> None:
+        """Toggle and persist theme."""
+        self._theme_name = "light" if self._theme_name == "dark" else "dark"
+        self.controller.save_theme(self._theme_name)
+        self._apply_theme()
+        self.SetStatusText(
+            "テーマ: ダーク" if self._theme_name == "dark" else "テーマ: ライト"
+        )
 
     def _setup_accelerators(self) -> None:
         """Setup keyboard accelerators."""
@@ -303,7 +337,7 @@ class MainFrame(wx.Frame):
 
     def _on_add_item(self, event: wx.Event) -> None:
         """Handle add item."""
-        dlg = TodoFormDialog(self)
+        dlg = TodoFormDialog(self, theme_name=self._theme_name)
         if dlg.ShowModal() == wx.ID_OK:
             result = dlg.get_result()
             if result:
@@ -326,7 +360,7 @@ class MainFrame(wx.Frame):
 
     def _on_edit_item(self, item: TodoItem) -> None:
         """Handle edit item."""
-        dlg = TodoFormDialog(self, item)
+        dlg = TodoFormDialog(self, item, theme_name=self._theme_name)
         if dlg.ShowModal() == wx.ID_OK:
             result = dlg.get_result()
             if result:
