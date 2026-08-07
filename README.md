@@ -419,18 +419,18 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 | Framework             | Notification | System tray | File association | Native dialog | Clipboard | Notes                        |
 | --------------------- | ------------ | ----------- | ---------------- | ------------- | --------- | ---------------------------- |
-| Avalonia              | -            | -           | -                | -             | -         | Pending                      |
-| Compose Multiplatform | -            | -           | -                | -             | -         | Pending                      |
-| Electron              | -            | -           | -                | -             | -         | Pending                      |
-| Flutter               | -            | -           | -                | -             | -         | Pending                      |
+| Avalonia              | N            | N           | N                | Y             | N         |                              |
+| Compose Multiplatform | N            | N           | N                | Y             | N         |                              |
+| Electron              | N            | N           | N                | Y             | N         |                              |
+| Flutter               | N            | N           | N                | Y             | N         |                              |
 | GPUI                  | -            | -           | -                | -             | -         | Excluded (no file picker)    |
 | MAUI                  | -            | -           | -                | -             | -         | Excluded (WinUI3 wrapper)    |
 | React Native          | -            | -           | -                | -             | -         | Excluded (insufficient info) |
-| Tauri                 | -            | -           | -                | -             | -         | Pending                      |
+| Tauri                 | N            | N           | N                | Y             | N         |                              |
 | WinForms              | -            | -           | -                | -             | -         | Excluded (limited UI)        |
-| WPF                   | -            | -           | -                | -             | -         | Pending                      |
-| WinUI3                | -            | -           | -                | -             | -         | Pending                      |
-| wxWidgets             | -            | -           | -                | -             | -         | Pending                      |
+| WPF                   | N            | N           | N                | Y             | N         |                              |
+| WinUI3                | N            | N           | N                | Y             | N         |                              |
+| wxWidgets             | N            | N           | N                | Y             | N         |                              |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -442,6 +442,13 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Notes: 備考
 
 **凡例**: `Y` 実装済み / `N` 未実装 / `P` 部分的 / `-` 未確認（除外は Notes 参照）
+
+**Notes**:
+- 各アプリ実装に基づく判定
+- Native dialog: import/export の OS ファイルピッカーを `Y`（全実装アプリで対応）
+- File association: JSON の DnD 取込はあるが、OS への拡張子関連付け登録ではないため `N`
+- Clipboard: テキスト欄の標準動作のみ。行コピー等の明示 API は未実装のため `N`
+- Notification / System tray: 未実装
 
 #### パフォーマンス機能
 
