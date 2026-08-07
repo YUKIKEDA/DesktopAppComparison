@@ -455,18 +455,18 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 | Framework             | Virtual list | Lazy load | Background work | Async | Memory opt. | Notes                        |
 | --------------------- | ------------ | --------- | --------------- | ----- | ----------- | ---------------------------- |
-| Avalonia              | Y            | N         | N               | Y     | N           |                              |
-| Compose Multiplatform | Y            | N         | Y               | Y     | N           | Dispatchers.IO for I/O       |
-| Electron              | Y            | N         | N               | Y     | N           |                              |
-| Flutter               | Y            | N         | N               | Y     | N           |                              |
+| Avalonia              | Y            | Y         | Y               | Y     | P           |                              |
+| Compose Multiplatform | Y            | Y         | Y               | Y     | P           |                              |
+| Electron              | Y            | Y         | Y               | Y     | P           |                              |
+| Flutter               | Y            | Y         | Y               | Y     | P           |                              |
 | GPUI                  | -            | -         | -               | -     | -           | Excluded (no file picker)    |
 | MAUI                  | -            | -         | -               | -     | -           | Excluded (WinUI3 wrapper)    |
 | React Native          | -            | -         | -               | -     | -           | Excluded (insufficient info) |
-| Tauri                 | Y            | N         | N               | Y     | N           |                              |
+| Tauri                 | Y            | Y         | Y               | Y     | P           |                              |
 | WinForms              | -            | -         | -               | -     | -           | Excluded (limited UI)        |
-| WPF                   | Y            | N         | N               | Y     | N           |                              |
-| WinUI3                | Y            | N         | Y               | Y     | N           | Task.Run for autosave        |
-| wxWidgets             | Y            | N         | N               | N     | N           | Sync file I/O                |
+| WPF                   | Y            | Y         | Y               | Y     | P           |                              |
+| WinUI3                | Y            | Y         | Y               | Y     | P           |                              |
+| wxWidgets             | Y            | Y         | Y               | Y     | P           |                              |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -481,11 +481,11 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 **Notes**:
 - 各アプリ実装に基づく判定
-- Virtual list: DataGrid / LazyColumn / ListView.builder / tanstack-virtual / wx.LC_VIRTUAL 等で行仮想化
-- Lazy load: ページネーションやスクロール追加読み込みは未実装（起動時の一括 JSON 読み込みのみ）
-- Background work: UI スレッド外への意図的オフロード（Compose `Dispatchers.IO`、WinUI 自動保存の `Task.Run`）
-- Async: ファイル I/O の async/await・コルーチン。wx は同期 I/O のため `N`
-- Memory opt.: 仮想化以外の明示的なメモリ最適化は未実装
+- Virtual list: DataGrid / LazyColumn / ListView.builder / tanstack-virtual / wx.LC_VIRTUAL 等
+- Lazy load: 全件はメモリ保持。表示は初期 100 件、末尾スクロールで +100。フィルタ／ソート変更時はリセット
+- Background work: フィルタ／ソート（および保存）を UI スレッド外へ（Task.Run / Isolate / Dispatchers / Thread + CallAfter / scheduleWork）
+- Async: ファイル I/O の非同期化（wx も worker + CallAfter）
+- Memory opt.: 仮想化に加え Dispose／購読解除などの軽い最適化のみのため `P`（オブジェクトプール等は未実装）
 
 ### 実装面の比較
 

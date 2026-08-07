@@ -1,4 +1,5 @@
 import type { ProjectData, ThemeData } from "../types";
+import { runInBackground } from "./scheduleWork";
 
 function parseThemeData(raw: unknown): ThemeData {
   const data = raw as { theme?: string };
@@ -20,10 +21,12 @@ export class DataService {
 
   static async saveData(data: ProjectData): Promise<void> {
     if (window.electronAPI) {
+      // Yield so filter/sort UI work stays responsive before IPC clone
+      await runInBackground(() => undefined);
       await window.electronAPI.saveData(data);
     } else {
-      // Fallback for development
-      localStorage.setItem("project-data", JSON.stringify(data));
+      const json = await runInBackground(() => JSON.stringify(data));
+      localStorage.setItem("project-data", json);
     }
   }
 

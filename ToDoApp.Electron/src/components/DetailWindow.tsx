@@ -9,7 +9,8 @@ interface DetailWindowProps {
 }
 
 export function DetailWindow({ itemId }: DetailWindowProps) {
-  const { setItems, updateItem, setLoading } = useTodoStore();
+  const setItems = useTodoStore((s) => s.setItems);
+  const setLoading = useTodoStore((s) => s.setLoading);
   const [item, setItem] = useState<TodoItem | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,9 +18,10 @@ export function DetailWindow({ itemId }: DetailWindowProps) {
     setLoading(true);
     try {
       const data = await DataService.loadData();
-      setItems(data.items);
+      // Keep only the viewed item — avoid retaining the full list in the store
       const found = data.items.find((i) => i.id === itemId) ?? null;
       setItem(found);
+      setItems(found ? [found] : []);
       if (!found) {
         setError("アイテムが見つかりません");
       } else {
@@ -44,6 +46,14 @@ export function DetailWindow({ itemId }: DetailWindowProps) {
     });
   }, [reload]);
 
+  // Clear listeners are handled above; drop retained arrays on unmount
+  useEffect(() => {
+    return () => {
+      setItem(null);
+      setItems([]);
+    };
+  }, [setItems]);
+
   const handleSave = async (data: {
     title: string;
     description?: string;
@@ -52,17 +62,25 @@ export function DetailWindow({ itemId }: DetailWindowProps) {
     dueDate: string | null;
   }) => {
     if (!item) return;
-    updateItem(item.id, {
-      title: data.title,
-      description: data.description || "",
-      status: data.status,
-      priority: data.priority,
-      dueDate: data.dueDate ?? null,
-    });
-    const { items: updated } = useTodoStore.getState();
-    await DataService.saveData({ items: updated });
-    const found = updated.find((i) => i.id === itemId) ?? null;
+    const current = await DataService.loadData();
+    const now = new Date().toISOString();
+    const updatedItems = current.items.map((i) =>
+      i.id === item.id
+        ? {
+            ...i,
+            title: data.title,
+            description: data.description || "",
+            status: data.status,
+            priority: data.priority,
+            dueDate: data.dueDate ?? null,
+            updatedAt: now,
+          }
+        : i
+    );
+    await DataService.saveData({ items: updatedItems });
+    const found = updatedItems.find((i) => i.id === itemId) ?? null;
     setItem(found);
+    setItems(found ? [found] : []);
   };
 
   if (error) {

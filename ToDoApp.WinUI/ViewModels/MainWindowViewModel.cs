@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -14,9 +15,17 @@ namespace ToDoApp.WinUI.ViewModels
 {
     public partial class MainWindowViewModel : ObservableObject
     {
+        private const int PageSize = 100;
+
         private readonly IDataService _dataService;
         private readonly DispatcherQueue _dispatcherQueue;
         private System.Threading.Timer? _autoSaveTimer;
+        private List<TodoItem> _filteredSource = new();
+        private int _visibleCount = PageSize;
+        private int _filterGeneration;
+        private bool _loadingMore;
+        private readonly List<Window> _detailWindows = new();
+        private bool _cleanedUp;
 
         [ObservableProperty]
         private ObservableCollection<TodoItem> _items = new();
@@ -305,7 +314,7 @@ namespace ToDoApp.WinUI.ViewModels
         private void SelectAll()
         {
             SelectedIds.Clear();
-            foreach (var item in FilteredItems)
+            foreach (var item in _filteredSource)
             {
                 SelectedIds.Add(item.Id);
             }
@@ -403,38 +412,118 @@ namespace ToDoApp.WinUI.ViewModels
 
         private void ApplyFilters()
         {
-            System.Diagnostics.Debug.WriteLine($"[ViewModel] ApplyFilters called. Items count: {Items.Count}");
-            var filtered = Items.AsEnumerable();
+            _ = ApplyFiltersAsync();
+        }
 
-            // テキスト検索（タイトルと説明）
-            if (!string.IsNullOrWhiteSpace(SearchText))
+        private async Task ApplyFiltersAsync()
+        {
+            var generation = ++_filterGeneration;
+            var searchText = SearchText;
+            var statusFilter = StatusFilter;
+            var priorityFilter = PriorityFilter;
+            var itemsSnapshot = Items.ToList();
+
+            List<TodoItem> result;
+            try
             {
-                var searchLower = SearchText.ToLower();
+                result = await Task.Run(() =>
+                    ComputeFiltered(itemsSnapshot, searchText, statusFilter, priorityFilter)).ConfigureAwait(false);
+            }
+            catch
+            {
+                return;
+            }
+
+            void ApplyOnUi()
+            {
+                if (generation != _filterGeneration)
+                {
+                    return;
+                }
+
+                _filteredSource = result;
+                _visibleCount = PageSize;
+                RefreshVisibleItems();
+            }
+
+            if (_dispatcherQueue.HasThreadAccess)
+            {
+                ApplyOnUi();
+            }
+            else
+            {
+                _dispatcherQueue.TryEnqueue(ApplyOnUi);
+            }
+        }
+
+        private static List<TodoItem> ComputeFiltered(
+            List<TodoItem> items,
+            string searchText,
+            string statusFilter,
+            string priorityFilter)
+        {
+            IEnumerable<TodoItem> filtered = items;
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                var searchLower = searchText.ToLower();
                 filtered = filtered.Where(item =>
                     item.Title.ToLower().Contains(searchLower) ||
                     item.Description.ToLower().Contains(searchLower));
             }
 
-            // ステータスフィルタ
-            if (!string.IsNullOrWhiteSpace(StatusFilter))
+            if (!string.IsNullOrWhiteSpace(statusFilter))
             {
-                filtered = filtered.Where(item => item.Status == StatusFilter);
+                filtered = filtered.Where(item => item.Status == statusFilter);
             }
 
-            // 優先度フィルタ
-            if (!string.IsNullOrWhiteSpace(PriorityFilter))
+            if (!string.IsNullOrWhiteSpace(priorityFilter))
             {
-                filtered = filtered.Where(item => item.Priority == PriorityFilter);
+                filtered = filtered.Where(item => item.Priority == priorityFilter);
             }
 
-            var filteredList = filtered.ToList();
-            System.Diagnostics.Debug.WriteLine($"[ViewModel] Filtered items count: {filteredList.Count}");
-            
-            // FilteredItemsを完全に新しいコレクションに置き換える
-            FilteredItems = new ObservableCollection<TodoItem>(filteredList);
-            
-            System.Diagnostics.Debug.WriteLine($"[ViewModel] FilteredItems updated. Count: {FilteredItems.Count}");
+            return filtered.ToList();
+        }
+
+        private void RefreshVisibleItems()
+        {
+            var count = Math.Min(_visibleCount, _filteredSource.Count);
+            var visible = new ObservableCollection<TodoItem>();
+            for (var i = 0; i < count; i++)
+            {
+                visible.Add(_filteredSource[i]);
+            }
+
+            FilteredItems = visible;
             OnPropertyChanged(nameof(FilteredItems));
+            OnPropertyChanged(nameof(AreAllFilteredSelected));
+            OnPropertyChanged(nameof(AreSomeFilteredSelected));
+        }
+
+        public void LoadMoreVisible()
+        {
+            if (_loadingMore || _visibleCount >= _filteredSource.Count)
+            {
+                return;
+            }
+
+            _loadingMore = true;
+            try
+            {
+                var previous = _visibleCount;
+                _visibleCount = Math.Min(_visibleCount + PageSize, _filteredSource.Count);
+                for (var i = previous; i < _visibleCount; i++)
+                {
+                    FilteredItems.Add(_filteredSource[i]);
+                }
+
+                OnPropertyChanged(nameof(AreAllFilteredSelected));
+                OnPropertyChanged(nameof(AreSomeFilteredSelected));
+            }
+            finally
+            {
+                _loadingMore = false;
+            }
         }
 
         private void TriggerAutoSave()
@@ -462,9 +551,36 @@ namespace ToDoApp.WinUI.ViewModels
             }, null, TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
         }
 
-        public bool AreAllFilteredSelected => FilteredItems.Count > 0 && FilteredItems.All(item => SelectedIds.Contains(item.Id));
+        public void RegisterDetailWindow(Window window)
+        {
+            _detailWindows.Add(window);
+            window.Closed += (_, _) => _detailWindows.Remove(window);
+        }
 
-        public bool AreSomeFilteredSelected => FilteredItems.Any(item => SelectedIds.Contains(item.Id));
+        public void Cleanup()
+        {
+            if (_cleanedUp)
+            {
+                return;
+            }
+
+            _cleanedUp = true;
+            _autoSaveTimer?.Dispose();
+            _autoSaveTimer = null;
+
+            foreach (var window in _detailWindows.ToList())
+            {
+                window.Close();
+            }
+            _detailWindows.Clear();
+            _filteredSource = new List<TodoItem>();
+            FilteredItems = new ObservableCollection<TodoItem>();
+        }
+
+        public bool AreAllFilteredSelected =>
+            _filteredSource.Count > 0 && _filteredSource.All(item => SelectedIds.Contains(item.Id));
+
+        public bool AreSomeFilteredSelected => _filteredSource.Any(item => SelectedIds.Contains(item.Id));
 
         public bool IsItemSelected(TodoItem item) => SelectedIds.Contains(item.Id);
     }

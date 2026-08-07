@@ -1,4 +1,4 @@
-"""Todo table component with virtual list."""
+"""Todo table component with virtual list and lazy page window."""
 import wx
 import wx.lib.mixins.listctrl as listmix
 import sys
@@ -12,6 +12,8 @@ from utils.constants import (
 )
 from utils.date_utils import parse_iso_datetime, format_datetime_for_display
 
+PAGE_SIZE = 100
+
 
 class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
     """Virtual list control for todo items."""
@@ -23,12 +25,11 @@ class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
 
         self.controller = controller
         self._items: List[TodoItem] = []
+        self._visible_count = 0
         self._selected_ids: Set[int] = set()
         self._sorts: List[dict] = []
         self._on_edit: Optional[Callable] = None
-
-        # Initialize debug counter
-        self._debug_call_count = 0
+        self._on_sort_change: Optional[Callable] = None
 
         self._setup_columns()
         self._bind_events()
@@ -54,41 +55,74 @@ class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         self.Bind(wx.EVT_LIST_COL_CLICK, self._on_column_click)
         self.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, self._on_item_right_click)
         self.Bind(wx.EVT_LEFT_DOWN, self._on_left_down)
+        self.Bind(wx.EVT_SCROLLWIN, self._on_scroll)
+        self.Bind(wx.EVT_MOUSEWHEEL, self._on_mousewheel)
+        self.Bind(wx.EVT_KEY_DOWN, self._on_key_down)
 
-    def set_items(self, items: List[TodoItem]) -> None:
-        """Set items to display."""
+    def set_on_sort_change(self, callback: Callable) -> None:
+        """Set callback invoked after sort config changes."""
+        self._on_sort_change = callback
+
+    def set_items(self, items: List[TodoItem], reset_visible: bool = True) -> None:
+        """Set full filtered/sorted items; display only the lazy window."""
         try:
-            print(f"set_items: Setting {len(items)} items")
-            # Reset debug counter
-            if hasattr(self, '_debug_call_count'):
-                delattr(self, '_debug_call_count')
-            
-            self._items = list(items) if items else []  # Ensure it's a list
-            print(f"set_items: Items stored, length={len(self._items)}")
-            
-            # Use CallAfter to ensure UI is ready before setting item count
-            wx.CallAfter(self._do_set_item_count, len(self._items))
+            self._items = list(items) if items else []
+            if reset_visible:
+                self._visible_count = min(PAGE_SIZE, len(self._items))
+            else:
+                self._visible_count = min(
+                    max(self._visible_count, PAGE_SIZE),
+                    len(self._items),
+                )
+            wx.CallAfter(self._do_set_item_count, self._visible_count)
         except Exception as e:
             import traceback
             error_msg = f"set_itemsエラー: {e}\n\n{traceback.format_exc()}"
             print(f"ERROR in set_items: {error_msg}", file=sys.stderr)
             wx.LogError(error_msg)
-    
+
     def _do_set_item_count(self, count: int) -> None:
         """Set item count and refresh (called via CallAfter)."""
         try:
-            print(f"_do_set_item_count: Setting count to {count}")
             self.SetItemCount(count)
-            print(f"_do_set_item_count: Item count set, calling RefreshItems")
-            # Use RefreshItems instead of Refresh for virtual lists
             if count > 0:
                 self.RefreshItems(0, count - 1)
-            print("_do_set_item_count: RefreshItems called")
+            else:
+                self.Refresh()
         except Exception as e:
             import traceback
             error_msg = f"_do_set_item_countエラー: {e}\n\n{traceback.format_exc()}"
             print(f"ERROR in _do_set_item_count: {error_msg}", file=sys.stderr)
             wx.LogError(error_msg)
+
+    def _maybe_load_more(self) -> None:
+        """Increase visible window when scrolled near the end."""
+        total = len(self._items)
+        if self._visible_count >= total:
+            return
+        try:
+            top = self.GetTopItem()
+            per_page = max(self.GetCountPerPage(), 1)
+            if top + per_page >= self._visible_count - 8:
+                new_count = min(self._visible_count + PAGE_SIZE, total)
+                if new_count != self._visible_count:
+                    self._visible_count = new_count
+                    self.SetItemCount(new_count)
+                    self.RefreshItems(0, new_count - 1)
+        except Exception:
+            pass
+
+    def _on_scroll(self, event: wx.ScrollWinEvent) -> None:
+        self._maybe_load_more()
+        event.Skip()
+
+    def _on_mousewheel(self, event: wx.MouseEvent) -> None:
+        event.Skip()
+        wx.CallAfter(self._maybe_load_more)
+
+    def _on_key_down(self, event: wx.KeyEvent) -> None:
+        event.Skip()
+        wx.CallAfter(self._maybe_load_more)
 
     def set_selected_ids(self, selected_ids: set) -> None:
         """Set selected item IDs."""
@@ -108,7 +142,7 @@ class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
     def OnGetItemText(self, item: int, column: int) -> str:
         """Get item text for virtual list."""
         try:
-            # Validate item index
+            # Validate item index against full source (virtual window may grow)
             if item < 0 or item >= len(self._items):
                 return ""
 
@@ -186,20 +220,20 @@ class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
             if not hit_result:
                 event.Skip()
                 return
-            
+
             item_idx = hit_result[0]
-            
+
             if item_idx >= 0 and item_idx < len(self._items):
                 col0_width = self.GetColumnWidth(0)
                 x_pos = point.x
-                
+
                 if x_pos <= col0_width:  # Clicked in checkbox column
                     todo_item = self._items[item_idx]
                     if todo_item and hasattr(todo_item, 'id'):
                         self.controller.toggle_selection(todo_item.id)
                         wx.CallAfter(self.RefreshItem, item_idx)
                     return
-        
+
             event.Skip()
         except Exception:
             event.Skip()
@@ -272,7 +306,10 @@ class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
 
         # Update column headers with sort indicators
         self._update_column_headers()
-        wx.PostEvent(self.GetParent(), wx.CommandEvent(wx.EVT_BUTTON.typeId, -3))
+        if self._on_sort_change:
+            self._on_sort_change()
+        else:
+            wx.PostEvent(self.GetParent(), wx.CommandEvent(wx.EVT_BUTTON.typeId, -3))
 
     def _update_column_headers(self) -> None:
         """Update column headers with sort indicators."""
@@ -346,7 +383,7 @@ class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
 
         if dlg.ShowModal() == wx.ID_YES:
             self.controller.delete_items([item.id])
-            self.controller.save_data()
+            self.controller.save_data_async()
 
         dlg.Destroy()
 
@@ -354,3 +391,11 @@ class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         """Get current sort configuration."""
         return self._sorts
 
+    def clear_items(self) -> None:
+        """Release held item list (memory cleanup)."""
+        self._items = []
+        self._visible_count = 0
+        try:
+            self.SetItemCount(0)
+        except Exception:
+            pass

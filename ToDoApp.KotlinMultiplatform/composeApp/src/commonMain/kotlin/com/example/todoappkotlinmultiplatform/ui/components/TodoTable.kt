@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,6 +19,9 @@ import com.example.todoappkotlinmultiplatform.model.SortDirection
 import com.example.todoappkotlinmultiplatform.model.TodoItem
 import com.example.todoappkotlinmultiplatform.util.formatDateISO
 import com.example.todoappkotlinmultiplatform.util.formatDateTimeISO
+import kotlin.math.min
+
+private const val PAGE_SIZE = 100
 
 @Composable
 fun TodoTable(
@@ -32,6 +36,31 @@ fun TodoTable(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
+    var visibleCount by remember { mutableIntStateOf(PAGE_SIZE) }
+
+    // Reset lazy window when the filtered/sorted source changes.
+    LaunchedEffect(items) {
+        visibleCount = PAGE_SIZE
+    }
+
+    val displayItems = remember(items, visibleCount) {
+        items.take(min(visibleCount, items.size))
+    }
+
+    // Load more when scrolled near the end.
+    LaunchedEffect(listState, items.size) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = info.totalItemsCount
+            lastVisible to total
+        }.collect { (lastVisible, total) ->
+            if (total == 0) return@collect
+            if (lastVisible >= total - 5 && visibleCount < items.size) {
+                visibleCount = min(visibleCount + PAGE_SIZE, items.size)
+            }
+        }
+    }
 
     Column(
         modifier = modifier.fillMaxSize()
@@ -74,7 +103,10 @@ fun TodoTable(
             state = listState,
             modifier = Modifier.fillMaxSize()
         ) {
-            itemsIndexed(items) { index, item ->
+            itemsIndexed(
+                items = displayItems,
+                key = { _, item -> item.id }
+            ) { index, item ->
                 val isSelected = selectedIds.contains(item.id)
                 Row(
                     modifier = Modifier
@@ -110,7 +142,7 @@ fun TodoTable(
                         Text("編集")
                     }
                 }
-                if (index < items.size - 1) {
+                if (index < displayItems.size - 1) {
                     HorizontalDivider()
                 }
             }
@@ -176,7 +208,6 @@ private fun TableHeaderCheckbox(
     modifier: Modifier = Modifier
 ) {
     val allSelected = items.isNotEmpty() && items.all { selectedIds.contains(it.id) }
-    val someSelected = items.any { selectedIds.contains(it.id) }
 
     Checkbox(
         checked = allSelected,
@@ -190,4 +221,3 @@ private fun TableHeaderCheckbox(
         modifier = modifier
     )
 }
-

@@ -3,6 +3,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { openPath } from "@tauri-apps/plugin-opener";
 import type { ProjectData, ThemeData, TodoItem } from "../types";
+import { runInBackground } from "./scheduleWork";
 
 export interface WindowBounds {
   x: number;
@@ -80,7 +81,9 @@ export class DataService {
     try {
       const dataDir = await getDataDir();
       const dataFile = `${dataDir}/project.json`;
-      const content = JSON.stringify(data, null, 2);
+      const content = await runInBackground(() =>
+        JSON.stringify(data, null, 2)
+      );
       await writeTextFile(dataFile, content);
     } catch (error) {
       console.error("Failed to save data:", error);
@@ -126,7 +129,9 @@ export class DataService {
         return; // User cancelled
       }
 
-      const content = JSON.stringify(data, null, 2);
+      const content = await runInBackground(() =>
+        JSON.stringify(data, null, 2)
+      );
       await writeTextFile(filePath, content);
     } catch (error) {
       console.error("Export failed:", error);

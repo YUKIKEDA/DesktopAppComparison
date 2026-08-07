@@ -1,4 +1,5 @@
 """Main application frame."""
+import threading
 import wx
 import sys
 import traceback
@@ -45,6 +46,7 @@ class MainFrame(wx.Frame):
             self._allow_close = False
             self._tray_icon = None
             self._startup_json_paths = list(startup_json_paths or [])
+            self._refresh_generation = 0
 
             print("MainFrame.__init__: Creating controller...")
             self.controller = TodoController()
@@ -119,16 +121,24 @@ class MainFrame(wx.Frame):
         """Import .json paths from argv after UI is ready."""
         for path in self._startup_json_paths:
             try:
-                if self.controller.import_from_path(path, parent=self):
-                    self.controller.save_data()
-                    show_notification("Todo App", "インポートしました", self)
-                    self.SetStatusText(f"起動引数からインポートしました: {path}")
+                self.controller.import_from_path_async(
+                    path,
+                    parent=self,
+                    on_done=lambda ok, err, p=path: self._on_import_done(ok, err, p),
+                )
             except Exception as e:
                 wx.MessageBox(
                     f"インポートに失敗しました: {e}",
                     "エラー",
                     wx.OK | wx.ICON_ERROR
                 )
+
+    def _on_import_done(self, ok: bool, err, path: str = "") -> None:
+        if not ok:
+            return
+        self.controller.save_data_async()
+        show_notification("Todo App", "インポートしました", self)
+        self.SetStatusText(f"インポートしました: {path}" if path else "インポートしました")
 
     def _create_ui(self) -> None:
         """Create main UI."""
@@ -261,26 +271,25 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_delete_selected, id=wx.ID_DELETE)
 
     def _load_data(self) -> None:
-        """Load data on startup."""
+        """Load data on startup asynchronously."""
         try:
-            print("_load_data: Loading data from controller...")
-            self.controller.load_data()
-            print("_load_data: Data loaded, refreshing table...")
-            self._refresh_table()
-            print("_load_data: Table refreshed")
+            print("_load_data: Loading data from controller (async)...")
+            self.SetStatusText("読み込み中...")
+
+            def on_done(err):
+                if err is not None:
+                    wx.MessageBox(
+                        f"データの読み込みに失敗しました: {err}\n空の状態で開始します。",
+                        "警告",
+                        wx.OK | wx.ICON_WARNING
+                    )
+                self._refresh_table()
+                self.SetStatusText("準備完了")
+
+            self.controller.load_data_async(on_done=on_done)
         except Exception as e:
             error_msg = f"データの読み込みに失敗しました: {e}\n\n{traceback.format_exc()}"
             print(f"ERROR in _load_data: {error_msg}", file=sys.stderr)
-            try:
-                wx.LogError(error_msg)
-                wx.MessageBox(
-                    f"データの読み込みに失敗しました: {e}\n空の状態で開始します。",
-                    "警告",
-                    wx.OK | wx.ICON_WARNING
-                )
-            except:
-                pass
-            # Continue with empty data
             try:
                 self._refresh_table()
             except Exception as e2:
@@ -291,7 +300,7 @@ class MainFrame(wx.Frame):
         try:
             print("_on_data_changed: Called")
             self._refresh_table()
-            print("_on_data_changed: Table refreshed")
+            print("_on_data_changed: Table refresh scheduled")
             selected_count = len(self.controller.get_selected_ids())
             self.toolbar.update_selection_count(selected_count)
             print("_on_data_changed: Selection count updated")
@@ -307,7 +316,7 @@ class MainFrame(wx.Frame):
             print(f"ERROR in _on_data_changed: {error_msg}", file=sys.stderr)
             try:
                 wx.LogError(error_msg)
-            except:
+            except Exception:
                 pass
 
     def _sync_detail_frames(self) -> None:
@@ -329,36 +338,51 @@ class MainFrame(wx.Frame):
     def _on_auto_save_timer(self, event: wx.TimerEvent) -> None:
         """Handle auto-save timer."""
         try:
-            self.controller.save_data()
+            self.controller.save_data_async()
         except Exception as e:
             wx.LogError(f"Auto-save failed: {e}")
 
     def _refresh_table(self) -> None:
-        """Refresh table display."""
+        """Refresh table display — filter/sort off the UI thread."""
         try:
-            # Get filters
-            filters = self.filter_bar.get_filters()
+            filters = list(self.filter_bar.get_filters())
+            sorts = list(self.table.get_sorts())
+            items_snapshot = list(self.controller.get_items())
+            selected_ids = set(self.controller.get_selected_ids())
+            generation = self._refresh_generation + 1
+            self._refresh_generation = generation
 
-            # Get filtered items
-            filtered_items = self.controller.get_filtered_items(filters)
+            def worker():
+                try:
+                    filtered_items = self.controller.get_filtered_items(
+                        filters, items=items_snapshot
+                    )
+                    sorted_items = self.controller.get_sorted_items(
+                        filtered_items, sorts
+                    )
+                except Exception as e:
+                    print(f"ERROR filter/sort worker: {e}", file=sys.stderr)
+                    sorted_items = items_snapshot
 
-            # Get sorts
-            sorts = self.table.get_sorts()
+                def apply():
+                    if generation != self._refresh_generation:
+                        return
+                    try:
+                        self.table.set_items(sorted_items, reset_visible=True)
+                        self.table.set_selected_ids(selected_ids)
+                        total_count = len(items_snapshot)
+                        filtered_count = len(sorted_items)
+                        self.SetStatusText(
+                            f"合計: {total_count}件 / 表示: {filtered_count}件"
+                        )
+                    except Exception as e:
+                        wx.LogError(f"Error applying table refresh: {e}")
 
-            # Get sorted items
-            sorted_items = self.controller.get_sorted_items(filtered_items, sorts)
+                wx.CallAfter(apply)
 
-            # Update table
-            self.table.set_items(sorted_items)
-            self.table.set_selected_ids(self.controller.get_selected_ids())
-
-            # Update status bar
-            total_count = len(self.controller.get_items())
-            filtered_count = len(sorted_items)
-            self.SetStatusText(f"合計: {total_count}件 / 表示: {filtered_count}件")
+            threading.Thread(target=worker, daemon=True).start()
         except Exception as e:
             wx.LogError(f"Error refreshing table: {e}")
-            import traceback
             wx.LogError(traceback.format_exc())
             self.SetStatusText(f"エラー: {e}")
 
@@ -370,7 +394,7 @@ class MainFrame(wx.Frame):
             if result:
                 try:
                     self.controller.add_item(result)
-                    self.controller.save_data()
+                    self.controller.save_data_async()
                 except ValueError as e:
                     wx.MessageBox(
                         f"アイテムの追加に失敗しました: {e}",
@@ -393,7 +417,7 @@ class MainFrame(wx.Frame):
             if result:
                 try:
                     self.controller.update_item(item.id, result)
-                    self.controller.save_data()
+                    self.controller.save_data_async()
                 except Exception as e:
                     wx.MessageBox(
                         f"アイテムの更新に失敗しました: {e}",
@@ -422,7 +446,7 @@ class MainFrame(wx.Frame):
         def on_save(saved_id: int, updates: dict) -> None:
             try:
                 self.controller.update_item(saved_id, updates)
-                self.controller.save_data()
+                self.controller.save_data_async()
             except Exception as e:
                 wx.MessageBox(
                     f"アイテムの更新に失敗しました: {e}",
@@ -441,10 +465,11 @@ class MainFrame(wx.Frame):
     def _on_drop_json(self, path: str) -> None:
         """Import dropped JSON file."""
         try:
-            if self.controller.import_from_path(path, parent=self):
-                self.controller.save_data()
-                show_notification("Todo App", "インポートしました", self)
-                self.SetStatusText(f"インポートしました: {path}")
+            self.controller.import_from_path_async(
+                path,
+                parent=self,
+                on_done=lambda ok, err, p=path: self._on_import_done(ok, err, p),
+            )
         except Exception as e:
             wx.MessageBox(
                 f"インポートに失敗しました: {e}",
@@ -462,9 +487,18 @@ class MainFrame(wx.Frame):
 
     def _on_save(self, event: wx.Event) -> None:
         """Handle save (Ctrl+S)."""
-        self.controller.save_data()
-        show_notification("Todo App", "保存しました", self)
-        self.SetStatusText("保存しました")
+        def on_done(err):
+            if err is None:
+                show_notification("Todo App", "保存しました", self)
+                self.SetStatusText("保存しました")
+            else:
+                wx.MessageBox(
+                    f"保存に失敗しました: {err}",
+                    "エラー",
+                    wx.OK | wx.ICON_ERROR
+                )
+
+        self.controller.save_data_async(on_done=on_done)
 
     def _on_focus_search(self, event: wx.Event) -> None:
         """Handle focus search (Ctrl+F)."""
@@ -490,6 +524,26 @@ class MainFrame(wx.Frame):
         except Exception as e:
             wx.LogError(f"Save on close failed: {e}")
 
+    def _cleanup_resources(self) -> None:
+        """Dispose timers, detail frames, and table buffers."""
+        try:
+            self._auto_save_timer.Stop()
+        except Exception:
+            pass
+        self._refresh_generation += 1
+
+        for frame in list(self._detail_frames.values()):
+            try:
+                frame.Destroy()
+            except Exception:
+                pass
+        self._detail_frames.clear()
+
+        try:
+            self.table.clear_items()
+        except Exception:
+            pass
+
     def _on_close(self, event: wx.CloseEvent) -> None:
         """Handle window close — hide to tray unless quitting."""
         if not self._allow_close:
@@ -499,15 +553,8 @@ class MainFrame(wx.Frame):
             return
 
         # Real quit from tray
-        self._auto_save_timer.Stop()
         self._persist_and_save()
-
-        for frame in list(self._detail_frames.values()):
-            try:
-                frame.Destroy()
-            except Exception:
-                pass
-        self._detail_frames.clear()
+        self._cleanup_resources()
 
         if self._tray_icon:
             try:

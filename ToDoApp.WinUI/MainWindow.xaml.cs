@@ -71,6 +71,7 @@ namespace ToDoApp.WinUI
             _exitRequested = true;
             DispatcherQueue.TryEnqueue(() =>
             {
+                MainPage?.ViewModel.Cleanup();
                 _trayIcon?.Dispose();
                 _trayIcon = null;
                 Close();
@@ -81,6 +82,7 @@ namespace ToDoApp.WinUI
         {
             if (_exitRequested || (_trayIcon?.ExitRequested ?? false))
             {
+                MainPage?.ViewModel.Cleanup();
                 return;
             }
 
@@ -92,6 +94,7 @@ namespace ToDoApp.WinUI
         private void MainWindow_Closed(object sender, WindowEventArgs args)
         {
             SaveWindowPosition();
+            MainPage?.ViewModel.Cleanup();
             _trayIcon?.Dispose();
             _trayIcon = null;
         }

@@ -37,6 +37,12 @@ public partial class App : Application
             desktop.Exit += (_, _) =>
             {
                 _exitRequested = true;
+                if (_mainWindow?.DataContext is MainWindowViewModel viewModel)
+                {
+                    viewModel.Cleanup();
+                }
+
+                DisposeTrayIcons();
             };
 
             var jsonPath = desktop.Args?.FirstOrDefault(IsJsonPath);
@@ -52,10 +58,32 @@ public partial class App : Application
     public void RequestExit()
     {
         _exitRequested = true;
+        if (_mainWindow?.DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.Cleanup();
+        }
+
+        DisposeTrayIcons();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.Shutdown();
         }
+    }
+
+    private void DisposeTrayIcons()
+    {
+        var trayIcons = TrayIcon.GetIcons(this);
+        if (trayIcons == null)
+        {
+            return;
+        }
+
+        foreach (var trayIcon in trayIcons.ToArray())
+        {
+            trayIcon.Dispose();
+        }
+
+        trayIcons.Clear();
     }
 
     public bool ShouldExit => _exitRequested;

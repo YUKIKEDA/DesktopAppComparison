@@ -4,13 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoappkotlinmultiplatform.model.*
 import com.example.todoappkotlinmultiplatform.util.currentTimeISOString
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -31,6 +34,9 @@ class TodoViewModel(
     private val _sorts = MutableStateFlow<List<SortConfig>>(emptyList())
     val sorts: StateFlow<List<SortConfig>> = _sorts.asStateFlow()
 
+    private val _filteredItems = MutableStateFlow<List<TodoItem>>(emptyList())
+    val filteredItems: StateFlow<List<TodoItem>> = _filteredItems.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -38,10 +44,28 @@ class TodoViewModel(
     val theme: StateFlow<String> = _theme.asStateFlow()
 
     private var saveJob: Job? = null
+    private var filterJob: Job? = null
 
     init {
         loadData()
         loadTheme()
+        observeFilteredItems()
+    }
+
+    private fun observeFilteredItems() {
+        viewModelScope.launch {
+            combine(_items, _filters, _sorts) { items, filters, sorts ->
+                Triple(items, filters, sorts)
+            }.collect { (items, filters, sorts) ->
+                filterJob?.cancel()
+                filterJob = launch {
+                    val result = withContext(Dispatchers.Default) {
+                        applyFilterAndSort(items, filters, sorts)
+                    }
+                    _filteredItems.value = result
+                }
+            }
+        }
     }
 
     private fun loadTheme() {
@@ -173,11 +197,18 @@ class TodoViewModel(
         _sorts.value = newSorts
     }
 
-    fun getFilteredItems(): List<TodoItem> {
-        var result = _items.value
+    /** Synchronous helper kept for callers that already have the latest snapshot. */
+    fun getFilteredItems(): List<TodoItem> =
+        applyFilterAndSort(_items.value, _filters.value, _sorts.value)
 
-        // Apply filters
-        _filters.value.forEach { filter ->
+    private fun applyFilterAndSort(
+        source: List<TodoItem>,
+        filters: List<FilterConfig>,
+        sorts: List<SortConfig>
+    ): List<TodoItem> {
+        var result = source
+
+        filters.forEach { filter ->
             result = when (filter.type) {
                 FilterType.TEXT -> {
                     if (filter.value is FilterValue.Text) {
@@ -210,12 +241,11 @@ class TodoViewModel(
                         result
                     }
                 }
-                FilterType.DATE -> result // TODO: Implement date filtering if needed
+                FilterType.DATE -> result
             }
         }
 
-        // Apply sorts
-        _sorts.value.forEach { sort ->
+        sorts.forEach { sort ->
             result = result.sortedWith { a, b ->
                 val comparison = when (sort.columnId) {
                     "id" -> a.id.compareTo(b.id)
@@ -328,6 +358,15 @@ class TodoViewModel(
         viewModelScope.launch {
             dataService.openDataFolder()
         }
+    }
+
+    override fun onCleared() {
+        saveJob?.cancel()
+        saveJob = null
+        filterJob?.cancel()
+        filterJob = null
+        _filteredItems.value = emptyList()
+        super.onCleared()
     }
 }
 

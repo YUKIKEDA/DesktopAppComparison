@@ -13,9 +13,17 @@ namespace ToDoApp.Wpf.ViewModels
 {
     public partial class MainWindowViewModel : ObservableObject
     {
+        private const int PageSize = 100;
+
         private readonly IDataService _dataService;
         private readonly ThemeService _themeService;
         private readonly System.Timers.Timer? _autoSaveTimer;
+        private List<TodoItem> _filteredSource = [];
+        private int _visibleCount = PageSize;
+        private int _filterGeneration;
+        private bool _loadingMore;
+        private readonly List<Window> _detailWindows = [];
+        private bool _cleanedUp;
 
         [ObservableProperty]
         private ObservableCollection<TodoItem> _items = [];
@@ -160,15 +168,14 @@ namespace ToDoApp.Wpf.ViewModels
 
         private void UpdateAllFilteredSelected()
         {
-            if (FilteredItems.Count == 0)
+            if (_filteredSource.Count == 0)
             {
                 _allFilteredSelected = false;
                 OnPropertyChanged(nameof(AllFilteredSelected));
                 return;
             }
 
-            var allSelected = FilteredItems.All(item => SelectedIds.Contains(item.Id));
-            var someSelected = FilteredItems.Any(item => SelectedIds.Contains(item.Id));
+            var allSelected = _filteredSource.All(item => SelectedIds.Contains(item.Id));
 
             if (allSelected != _allFilteredSelected)
             {
@@ -211,8 +218,11 @@ namespace ToDoApp.Wpf.ViewModels
         {
             try
             {
-                var data = new ProjectData { Items = Items.ToList() };
-                await _dataService.SaveDataAsync(data);
+                var snapshot = Items.ToList();
+                await Task.Run(async () =>
+                {
+                    await _dataService.SaveDataAsync(new ProjectData { Items = snapshot });
+                }).ConfigureAwait(true);
                 if (notify)
                 {
                     App.TrayService.ShowNotification("Todo App", "保存しました");
@@ -382,7 +392,7 @@ namespace ToDoApp.Wpf.ViewModels
         [RelayCommand]
         private void SelectAll()
         {
-            foreach (var item in FilteredItems)
+            foreach (var item in _filteredSource)
             {
                 if (!SelectedIds.Contains(item.Id))
                 {
@@ -396,7 +406,7 @@ namespace ToDoApp.Wpf.ViewModels
         private void DeselectAll()
         {
             // フィルタリングされたアイテムだけを解除
-            foreach (var item in FilteredItems)
+            foreach (var item in _filteredSource)
             {
                 SelectedIds.Remove(item.Id);
             }
@@ -485,6 +495,12 @@ namespace ToDoApp.Wpf.ViewModels
 
             var detailWindow = new Views.ItemDetailWindow(item, UpdateItemFromDetail);
             detailWindow.Owner = System.Windows.Application.Current.MainWindow;
+            _detailWindows.Add(detailWindow);
+            detailWindow.Closed += (_, _) =>
+            {
+                _detailWindows.Remove(detailWindow);
+                detailWindow.DataContext = null;
+            };
             detailWindow.Show();
         }
 
@@ -542,55 +558,162 @@ namespace ToDoApp.Wpf.ViewModels
 
         private void ApplyFilters()
         {
-            FilteredItems.Clear();
-
-            var filtered = Items.AsEnumerable();
-
-            // テキスト検索フィルタ（タイトルと説明の両方を検索）
-            if (!string.IsNullOrWhiteSpace(SearchText))
-            {
-                var searchTerm = SearchText.ToLower();
-                filtered = filtered.Where(item =>
-                    item.Title.Contains(searchTerm, StringComparison.CurrentCultureIgnoreCase) ||
-                    item.Description.Contains(searchTerm, StringComparison.CurrentCultureIgnoreCase)
-                );
-            }
-
-            // ステータスフィルタ
-            if (!string.IsNullOrEmpty(SelectedStatus))
-            {
-                filtered = filtered.Where(item => item.Status == SelectedStatus);
-            }
-
-            // 優先度フィルタ
-            if (!string.IsNullOrEmpty(SelectedPriority))
-            {
-                filtered = filtered.Where(item => item.Priority == SelectedPriority);
-            }
-
-            foreach (var item in filtered)
-            {
-                FilteredItems.Add(item);
-            }
-
-            ApplySorting();
-            UpdateAllFilteredSelected();
+            _ = ApplyFiltersAsync();
         }
 
         private void ApplySorting()
         {
-            if (_itemsView == null) return;
+            _ = ApplyFiltersAsync();
+        }
 
-            _itemsView.SortDescriptions.Clear();
+        private async Task ApplyFiltersAsync()
+        {
+            var generation = ++_filterGeneration;
+            var searchText = SearchText;
+            var selectedStatus = SelectedStatus;
+            var selectedPriority = SelectedPriority;
+            var sortColumn = _sortColumn;
+            var sortDirection = SortDirection;
+            var itemsSnapshot = Items.ToList();
 
-            if (!string.IsNullOrEmpty(_sortColumn))
+            List<TodoItem> result;
+            try
             {
-                _itemsView.SortDescriptions.Add(new SortDescription(_sortColumn, SortDirection));
+                result = await Task.Run(() =>
+                    ComputeFilteredSorted(
+                        itemsSnapshot,
+                        searchText,
+                        selectedStatus,
+                        selectedPriority,
+                        sortColumn,
+                        sortDirection)).ConfigureAwait(false);
             }
-            else
+            catch
             {
-                _itemsView.SortDescriptions.Add(new SortDescription("Id", ListSortDirection.Ascending));
+                return;
             }
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (generation != _filterGeneration)
+                {
+                    return;
+                }
+
+                _filteredSource = result;
+                _visibleCount = PageSize;
+                RefreshVisibleItems();
+                UpdateAllFilteredSelected();
+            });
+        }
+
+        private static List<TodoItem> ComputeFilteredSorted(
+            List<TodoItem> items,
+            string searchText,
+            string selectedStatus,
+            string selectedPriority,
+            string sortColumn,
+            ListSortDirection sortDirection)
+        {
+            IEnumerable<TodoItem> filtered = items;
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                filtered = filtered.Where(item =>
+                    item.Title.Contains(searchText, StringComparison.CurrentCultureIgnoreCase) ||
+                    item.Description.Contains(searchText, StringComparison.CurrentCultureIgnoreCase));
+            }
+
+            if (!string.IsNullOrEmpty(selectedStatus))
+            {
+                filtered = filtered.Where(item => item.Status == selectedStatus);
+            }
+
+            if (!string.IsNullOrEmpty(selectedPriority))
+            {
+                filtered = filtered.Where(item => item.Priority == selectedPriority);
+            }
+
+            if (string.IsNullOrEmpty(sortColumn))
+            {
+                return filtered.OrderBy(item => item.Id).ToList();
+            }
+
+            return sortDirection == ListSortDirection.Ascending
+                ? filtered.OrderBy(GetSortKey(sortColumn)).ToList()
+                : filtered.OrderByDescending(GetSortKey(sortColumn)).ToList();
+        }
+
+        private static Func<TodoItem, object?> GetSortKey(string sortColumn) => item => sortColumn switch
+        {
+            "Id" => item.Id,
+            "Title" => item.Title,
+            "Description" => item.Description,
+            "Status" => item.Status,
+            "Priority" => item.Priority,
+            "DueDate" => item.DueDate,
+            "CreatedAt" => item.CreatedAt,
+            "UpdatedAt" => item.UpdatedAt,
+            _ => item.Id
+        };
+
+        private void RefreshVisibleItems()
+        {
+            FilteredItems.Clear();
+            var count = Math.Min(_visibleCount, _filteredSource.Count);
+            for (var i = 0; i < count; i++)
+            {
+                FilteredItems.Add(_filteredSource[i]);
+            }
+
+            // Items arrive pre-sorted from background work.
+            if (_itemsView != null)
+            {
+                _itemsView.SortDescriptions.Clear();
+            }
+        }
+
+        public void LoadMoreVisible()
+        {
+            if (_loadingMore || _visibleCount >= _filteredSource.Count)
+            {
+                return;
+            }
+
+            _loadingMore = true;
+            try
+            {
+                var previous = _visibleCount;
+                _visibleCount = Math.Min(_visibleCount + PageSize, _filteredSource.Count);
+                for (var i = previous; i < _visibleCount; i++)
+                {
+                    FilteredItems.Add(_filteredSource[i]);
+                }
+            }
+            finally
+            {
+                _loadingMore = false;
+            }
+        }
+
+        public void Cleanup()
+        {
+            if (_cleanedUp)
+            {
+                return;
+            }
+
+            _cleanedUp = true;
+            _autoSaveTimer?.Stop();
+            _autoSaveTimer?.Dispose();
+
+            foreach (var window in _detailWindows.ToList())
+            {
+                window.Close();
+            }
+            _detailWindows.Clear();
+            _filteredSource = [];
+            FilteredItems.Clear();
         }
 
         public void HandleKeyDown(System.Windows.Input.KeyEventArgs e)

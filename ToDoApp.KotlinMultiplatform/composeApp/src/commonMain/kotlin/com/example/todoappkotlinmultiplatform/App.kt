@@ -27,19 +27,15 @@ fun App(
     val colorScheme = if (isDark) DarkColorScheme else LightColorScheme
 
     MaterialTheme(colorScheme = colorScheme) {
-        val items by viewModel.items.collectAsState()
         val selectedIds by viewModel.selectedIds.collectAsState()
         val filters by viewModel.filters.collectAsState()
         val sorts by viewModel.sorts.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
+        val filteredItems by viewModel.filteredItems.collectAsState()
 
         var editingItem by remember { mutableStateOf<TodoItem?>(null) }
         var isDialogOpen by remember { mutableStateOf(false) }
         val clipboardManager = LocalClipboardManager.current
-
-        val filteredItems = remember(items, filters, sorts) {
-            viewModel.getFilteredItems()
-        }
 
         fun copySelected() {
             val json = viewModel.copySelectedAsJson() ?: return

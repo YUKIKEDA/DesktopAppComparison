@@ -1,6 +1,8 @@
 ﻿using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using ToDoApp.Wpf.Models;
 using ToDoApp.Wpf.Services;
@@ -14,6 +16,7 @@ namespace ToDoApp.Wpf.Views
     public partial class MainWindow : Window
     {
         private readonly IDataService _dataService;
+        private ScrollViewer? _dataGridScrollViewer;
 
         public MainWindow()
         {
@@ -21,6 +24,60 @@ namespace ToDoApp.Wpf.Views
 
             _dataService = App.ServiceProvider.GetRequiredService<IDataService>();
             DataContext = new MainWindowViewModel(_dataService);
+            TodoDataGrid.Loaded += TodoDataGrid_Loaded;
+        }
+
+        private void TodoDataGrid_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (_dataGridScrollViewer != null)
+            {
+                _dataGridScrollViewer.ScrollChanged -= OnDataGridScrollChanged;
+            }
+
+            _dataGridScrollViewer = FindVisualChild<ScrollViewer>(TodoDataGrid);
+            if (_dataGridScrollViewer != null)
+            {
+                _dataGridScrollViewer.ScrollChanged += OnDataGridScrollChanged;
+            }
+        }
+
+        private void OnDataGridScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel viewModel)
+            {
+                return;
+            }
+
+            if (e.ExtentHeight <= 0)
+            {
+                return;
+            }
+
+            var remaining = e.ExtentHeight - e.VerticalOffset - e.ViewportHeight;
+            if (remaining < 80)
+            {
+                viewModel.LoadMoreVisible();
+            }
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typed)
+                {
+                    return typed;
+                }
+
+                var result = FindVisualChild<T>(child);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
         }
 
         private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)

@@ -1,8 +1,10 @@
 using System;
 using System.IO;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using ToDoApp.Avalonia.Services;
 using ToDoApp.Avalonia.ViewModels;
 
@@ -11,6 +13,7 @@ namespace ToDoApp.Avalonia.Views;
 public partial class MainWindow : Window
 {
     private readonly IDataService _dataService;
+    private ScrollViewer? _dataGridScrollViewer;
 
     public MainWindow()
     {
@@ -23,8 +26,47 @@ public partial class MainWindow : Window
 
         Opened += OnOpened;
         Closing += OnClosing;
+        TodoDataGrid.TemplateApplied += TodoDataGrid_TemplateApplied;
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
+    }
+
+    private void TodoDataGrid_TemplateApplied(object? sender, TemplateAppliedEventArgs e)
+    {
+        AttachDataGridScrollListener();
+    }
+
+    private void AttachDataGridScrollListener()
+    {
+        if (_dataGridScrollViewer != null)
+        {
+            _dataGridScrollViewer.ScrollChanged -= OnDataGridScrollChanged;
+        }
+
+        _dataGridScrollViewer = TodoDataGrid.FindDescendantOfType<ScrollViewer>();
+        if (_dataGridScrollViewer != null)
+        {
+            _dataGridScrollViewer.ScrollChanged += OnDataGridScrollChanged;
+        }
+    }
+
+    private void OnDataGridScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (sender is not ScrollViewer scrollViewer || DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (scrollViewer.Extent.Height <= 0)
+        {
+            return;
+        }
+
+        var remaining = scrollViewer.Extent.Height - scrollViewer.Offset.Y - scrollViewer.Viewport.Height;
+        if (remaining < 80)
+        {
+            viewModel.LoadMoreVisible();
+        }
     }
 
     private void OnOpened(object? sender, EventArgs e)

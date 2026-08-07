@@ -117,6 +117,7 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
   @override
   void dispose() {
     _saveTimer?.cancel();
+    _saveTimer = null;
     if (_isDesktop) {
       windowManager.removeListener(this);
     }

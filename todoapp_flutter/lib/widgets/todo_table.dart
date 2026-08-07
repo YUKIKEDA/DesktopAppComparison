@@ -1,9 +1,113 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/todo_provider.dart';
 import '../models/todo_item.dart';
 import '../models/filter_config.dart';
+
+const int _pageSize = 100;
+const int _bgWorkThreshold = 200;
+
+/// Top-level entry for [compute] / Isolate — filter then sort.
+List<Map<String, dynamic>> _filterSortWorker(Map<String, dynamic> args) {
+  final items = (args['items'] as List)
+      .cast<Map<String, dynamic>>()
+      .map(TodoItem.fromJson)
+      .toList();
+  final filters = (args['filters'] as List)
+      .cast<Map<String, dynamic>>()
+      .map(FilterConfig.fromJson)
+      .toList();
+  final sortColumn = args['sortColumn'] as String?;
+  final sortAscending = args['sortAscending'] as bool? ?? true;
+
+  var result = _applyFilters(items, filters);
+  result = _applySort(result, sortColumn, sortAscending);
+  return result.map((e) => e.toJson()).toList();
+}
+
+List<TodoItem> _applyFilters(List<TodoItem> items, List<FilterConfig> filters) {
+  var result = List<TodoItem>.from(items);
+
+  for (final filter in filters) {
+    if (filter.type == 'text' && filter.value is String) {
+      final searchTerm = (filter.value as String).toLowerCase();
+      result = result.where((item) {
+        if (filter.columnId == 'title') {
+          return item.title.toLowerCase().contains(searchTerm) ||
+              item.description.toLowerCase().contains(searchTerm);
+        }
+        if (filter.columnId == 'description') {
+          return item.description.toLowerCase().contains(searchTerm);
+        }
+        return true;
+      }).toList();
+    } else if (filter.type == 'select' && filter.value is List) {
+      final filterValues = (filter.value as List).cast<String>();
+      result = result.where((item) {
+        if (filter.columnId == 'status') {
+          return filterValues.contains(item.status);
+        }
+        if (filter.columnId == 'priority') {
+          return filterValues.contains(item.priority);
+        }
+        return true;
+      }).toList();
+    }
+  }
+
+  return result;
+}
+
+List<TodoItem> _applySort(
+  List<TodoItem> items,
+  String? sortColumn,
+  bool sortAscending,
+) {
+  if (sortColumn == null) return items;
+
+  final sorted = List<TodoItem>.from(items);
+  sorted.sort((a, b) {
+    int comparison = 0;
+    switch (sortColumn) {
+      case 'id':
+        comparison = a.id.compareTo(b.id);
+        break;
+      case 'title':
+        comparison = a.title.compareTo(b.title);
+        break;
+      case 'description':
+        comparison = a.description.compareTo(b.description);
+        break;
+      case 'status':
+        comparison = a.status.compareTo(b.status);
+        break;
+      case 'priority':
+        comparison = a.priority.compareTo(b.priority);
+        break;
+      case 'dueDate':
+        final aDate = a.dueDate != null ? DateTime.tryParse(a.dueDate!) : null;
+        final bDate = b.dueDate != null ? DateTime.tryParse(b.dueDate!) : null;
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        comparison = aDate.compareTo(bDate);
+        break;
+      case 'createdAt':
+        comparison = a.createdAt.compareTo(b.createdAt);
+        break;
+      case 'updatedAt':
+        comparison = a.updatedAt.compareTo(b.updatedAt);
+        break;
+    }
+    return sortAscending ? comparison : -comparison;
+  });
+
+  return sorted;
+}
 
 class TodoTable extends ConsumerStatefulWidget {
   final Function(TodoItem) onEdit;
@@ -19,93 +123,100 @@ class _TodoTableState extends ConsumerState<TodoTable> {
   String? _sortColumn;
   bool _sortAscending = true;
 
+  int _visibleCount = _pageSize;
+  List<TodoItem> _processedItems = const [];
+  int _processGeneration = 0;
+  Object? _lastProcessKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final state = ref.read(todoProvider);
+      _scheduleProcess(
+        items: state.items,
+        filters: state.filters,
+        sortColumn: _sortColumn,
+        sortAscending: _sortAscending,
+      );
+    });
+  }
+
   @override
   void dispose() {
+    _processGeneration++; // cancel in-flight isolate results
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _processedItems = const [];
     super.dispose();
   }
 
-  List<TodoItem> _getFilteredItems(
-    List<TodoItem> items,
-    List<FilterConfig> filters,
-  ) {
-    var result = List<TodoItem>.from(items);
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.maxScrollExtent <= 0) return;
+    if (pos.pixels < pos.maxScrollExtent - 240) return;
 
-    for (final filter in filters) {
-      if (filter.type == 'text' && filter.value is String) {
-        final searchTerm = (filter.value as String).toLowerCase();
-        result = result.where((item) {
-          if (filter.columnId == 'title') {
-            return item.title.toLowerCase().contains(searchTerm) ||
-                item.description.toLowerCase().contains(searchTerm);
-          }
-          if (filter.columnId == 'description') {
-            return item.description.toLowerCase().contains(searchTerm);
-          }
-          return true;
-        }).toList();
-      } else if (filter.type == 'select' && filter.value is List) {
-        final filterValues = (filter.value as List).cast<String>();
-        result = result.where((item) {
-          if (filter.columnId == 'status') {
-            return filterValues.contains(item.status);
-          }
-          if (filter.columnId == 'priority') {
-            return filterValues.contains(item.priority);
-          }
-          return true;
-        }).toList();
-      }
-    }
-
-    return result;
+    final total = _processedItems.length;
+    if (_visibleCount >= total) return;
+    setState(() {
+      _visibleCount = math.min(_visibleCount + _pageSize, total);
+    });
   }
 
-  List<TodoItem> _getSortedItems(List<TodoItem> items) {
-    if (_sortColumn == null) return items;
+  void _resetVisibleCount() {
+    _visibleCount = _pageSize;
+  }
 
-    final sorted = List<TodoItem>.from(items);
-    sorted.sort((a, b) {
-      int comparison = 0;
-      switch (_sortColumn) {
-        case 'id':
-          comparison = a.id.compareTo(b.id);
-          break;
-        case 'title':
-          comparison = a.title.compareTo(b.title);
-          break;
-        case 'description':
-          comparison = a.description.compareTo(b.description);
-          break;
-        case 'status':
-          comparison = a.status.compareTo(b.status);
-          break;
-        case 'priority':
-          comparison = a.priority.compareTo(b.priority);
-          break;
-        case 'dueDate':
-          final aDate = a.dueDate != null
-              ? DateTime.tryParse(a.dueDate!)
-              : null;
-          final bDate = b.dueDate != null
-              ? DateTime.tryParse(b.dueDate!)
-              : null;
-          if (aDate == null && bDate == null) return 0;
-          if (aDate == null) return 1;
-          if (bDate == null) return -1;
-          comparison = aDate.compareTo(bDate);
-          break;
-        case 'createdAt':
-          comparison = a.createdAt.compareTo(b.createdAt);
-          break;
-        case 'updatedAt':
-          comparison = a.updatedAt.compareTo(b.updatedAt);
-          break;
-      }
-      return _sortAscending ? comparison : -comparison;
+  Future<void> _scheduleProcess({
+    required List<TodoItem> items,
+    required List<FilterConfig> filters,
+    required String? sortColumn,
+    required bool sortAscending,
+  }) async {
+    final key = Object.hash(
+      identityHashCode(items),
+      items.length,
+      filters.length,
+      filters.map((f) => '${f.columnId}:${f.type}:${f.value}').join('|'),
+      sortColumn,
+      sortAscending,
+    );
+    if (key == _lastProcessKey) return;
+    _lastProcessKey = key;
+    _resetVisibleCount();
+
+    final generation = ++_processGeneration;
+
+    if (items.length < _bgWorkThreshold) {
+      final result = _applySort(
+        _applyFilters(items, filters),
+        sortColumn,
+        sortAscending,
+      );
+      if (!mounted || generation != _processGeneration) return;
+      setState(() {
+        _processedItems = result;
+        _visibleCount = math.min(_pageSize, result.length);
+      });
+      return;
+    }
+
+    final maps = await compute(_filterSortWorker, {
+      'items': items.map((e) => e.toJson()).toList(),
+      'filters': filters.map((e) => e.toJson()).toList(),
+      'sortColumn': sortColumn,
+      'sortAscending': sortAscending,
     });
 
-    return sorted;
+    if (!mounted || generation != _processGeneration) return;
+    final result = maps.map(TodoItem.fromJson).toList();
+    setState(() {
+      _processedItems = result;
+      _visibleCount = math.min(_pageSize, result.length);
+    });
   }
 
   void _handleSort(String column) {
@@ -116,7 +227,15 @@ class _TodoTableState extends ConsumerState<TodoTable> {
         _sortColumn = column;
         _sortAscending = true;
       }
+      _resetVisibleCount();
     });
+    final state = ref.read(todoProvider);
+    _scheduleProcess(
+      items: state.items,
+      filters: state.filters,
+      sortColumn: _sortColumn,
+      sortAscending: _sortAscending,
+    );
   }
 
   Widget _buildHeader(String title, String columnId, double width) {
@@ -158,8 +277,21 @@ class _TodoTableState extends ConsumerState<TodoTable> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(todoProvider);
-    final filteredItems = _getFilteredItems(state.items, state.filters);
-    final sortedItems = _getSortedItems(filteredItems);
+
+    ref.listen<TodoState>(todoProvider, (previous, next) {
+      if (previous?.items == next.items && previous?.filters == next.filters) {
+        return;
+      }
+      _scheduleProcess(
+        items: next.items,
+        filters: next.filters,
+        sortColumn: _sortColumn,
+        sortAscending: _sortAscending,
+      );
+    });
+
+    final sortedItems = _processedItems;
+    final displayCount = math.min(_visibleCount, sortedItems.length);
     final allFilteredSelected =
         sortedItems.isNotEmpty &&
         sortedItems.every((item) => state.selectedIds.contains(item.id));
@@ -253,7 +385,7 @@ class _TodoTableState extends ConsumerState<TodoTable> {
                 ? const Center(child: Text('データがありません'))
                 : ListView.builder(
                     controller: _scrollController,
-                    itemCount: sortedItems.length,
+                    itemCount: displayCount,
                     itemBuilder: (context, index) {
                       final item = sortedItems[index];
                       final isSelected = state.selectedIds.contains(item.id);

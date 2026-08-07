@@ -113,7 +113,7 @@ class Toolbar(wx.Panel):
 
         if dlg.ShowModal() == wx.ID_YES:
             self.controller.delete_items(selected_ids)
-            self.controller.save_data()
+            self.controller.save_data_async()
 
         dlg.Destroy()
 
@@ -142,17 +142,38 @@ class Toolbar(wx.Panel):
 
     def _on_export(self, event: wx.CommandEvent) -> None:
         """Handle export button click."""
-        self.controller.export_data(self)
+        def on_done(ok, err):
+            if err is not None:
+                wx.MessageBox(
+                    f"エクスポートに失敗しました: {err}",
+                    "エラー",
+                    wx.OK | wx.ICON_ERROR
+                )
+            elif ok:
+                frame = self.GetTopLevelParent()
+                if frame and hasattr(frame, "SetStatusText"):
+                    frame.SetStatusText("エクスポートしました")
+
+        self.controller.export_data_async(self, on_done=on_done)
 
     def _on_import(self, event: wx.CommandEvent) -> None:
         """Handle import button click."""
         try:
-            if self.controller.import_data(self):
-                self.controller.save_data()
-                show_notification("Todo App", "インポートしました", self)
-                frame = self.GetTopLevelParent()
-                if frame and hasattr(frame, "SetStatusText"):
-                    frame.SetStatusText("インポートしました")
+            def on_done(ok, err):
+                if err is not None:
+                    wx.MessageBox(
+                        f"インポートに失敗しました: {err}",
+                        "エラー",
+                        wx.OK | wx.ICON_ERROR
+                    )
+                elif ok:
+                    self.controller.save_data_async()
+                    show_notification("Todo App", "インポートしました", self)
+                    frame = self.GetTopLevelParent()
+                    if frame and hasattr(frame, "SetStatusText"):
+                        frame.SetStatusText("インポートしました")
+
+            self.controller.import_data_async(self, on_done=on_done)
         except Exception as e:
             wx.MessageBox(
                 f"インポートに失敗しました: {e}",

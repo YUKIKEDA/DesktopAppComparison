@@ -38,6 +38,11 @@ namespace ToDoApp.Wpf
 
         protected override void OnExit(ExitEventArgs e)
         {
+            if (MainWindow?.DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.Cleanup();
+            }
+
             TrayService?.Dispose();
             base.OnExit(e);
         }

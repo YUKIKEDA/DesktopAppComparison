@@ -1,20 +1,22 @@
 import {
   useReactTable,
   getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TodoItem } from "../types";
 import { useTodoStore } from "../store/useTodoStore";
+import { filterAndSort } from "../lib/filterSort";
+import { scheduleWork } from "../lib/scheduleWork";
 import { Checkbox } from "./ui/Checkbox";
 import { Button } from "./ui/Button";
 import { format } from "date-fns";
 import { cn } from "../lib/utils";
+
+const PAGE_SIZE = 100;
 
 interface TodoTableProps {
   onEdit?: (item: TodoItem) => void;
@@ -24,56 +26,42 @@ export function TodoTable({ onEdit }: TodoTableProps) {
   const { items, selectedIds, filters, toggleSelection } = useTodoStore();
 
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [processedItems, setProcessedItems] = useState<TodoItem[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const processGenRef = useRef(0);
 
-  // Apply filters
-  const filteredItems = useMemo(() => {
-    let result = [...items];
+  // Reset windowed count when filter/sort/source changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [items, filters, sorting]);
 
-    filters.forEach((filter) => {
-      if (filter.type === "text" && typeof filter.value === "string") {
-        const searchTerm = filter.value.toLowerCase();
-        result = result.filter((item) => {
-          if (filter.columnId === "title") {
-            // タイトルフィルタはタイトルと説明の両方を検索
-            return (
-              item.title.toLowerCase().includes(searchTerm) ||
-              item.description.toLowerCase().includes(searchTerm)
-            );
-          }
-          if (filter.columnId === "description") {
-            return item.description.toLowerCase().includes(searchTerm);
-          }
-          return true;
-        });
-      } else if (filter.type === "select" && Array.isArray(filter.value)) {
-        const filterValues = filter.value as string[];
-        result = result.filter((item) => {
-          if (filter.columnId === "status") {
-            return filterValues.includes(item.status);
-          }
-          if (filter.columnId === "priority") {
-            return filterValues.includes(item.priority);
-          }
-          return true;
-        });
-      }
+  // Filter/sort off the critical path (idle / setTimeout(0))
+  useEffect(() => {
+    const gen = ++processGenRef.current;
+    const cancel = scheduleWork(() => {
+      if (gen !== processGenRef.current) return;
+      setProcessedItems(filterAndSort(items, filters, sorting));
     });
+    return () => {
+      cancel();
+    };
+  }, [items, filters, sorting]);
 
-    return result;
-  }, [items, filters]);
+  const displayItems = useMemo(
+    () => processedItems.slice(0, visibleCount),
+    [processedItems, visibleCount]
+  );
 
-  // Calculate header checkbox state based on filtered items
   const allFilteredSelected = useMemo(() => {
-    if (filteredItems.length === 0) return false;
-    return filteredItems.every((item) => selectedIds.has(item.id));
-  }, [filteredItems, selectedIds]);
+    if (processedItems.length === 0) return false;
+    return processedItems.every((item) => selectedIds.has(item.id));
+  }, [processedItems, selectedIds]);
 
   const someFilteredSelected = useMemo(() => {
-    return filteredItems.some((item) => selectedIds.has(item.id));
-  }, [filteredItems, selectedIds]);
+    return processedItems.some((item) => selectedIds.has(item.id));
+  }, [processedItems, selectedIds]);
 
-  // Columns definition
   const columns = useMemo<ColumnDef<TodoItem>[]>(
     () => [
       {
@@ -88,15 +76,13 @@ export function TodoTable({ onEdit }: TodoTableProps) {
             }}
             onChange={(e) => {
               if (e.target.checked) {
-                // Select all filtered items
-                filteredItems.forEach((item) => {
+                processedItems.forEach((item) => {
                   if (!selectedIds.has(item.id)) {
                     toggleSelection(item.id);
                   }
                 });
               } else {
-                // Deselect all filtered items
-                filteredItems.forEach((item) => {
+                processedItems.forEach((item) => {
                   if (selectedIds.has(item.id)) {
                     toggleSelection(item.id);
                   }
@@ -190,18 +176,18 @@ export function TodoTable({ onEdit }: TodoTableProps) {
       selectedIds,
       toggleSelection,
       onEdit,
-      filteredItems,
+      processedItems,
       allFilteredSelected,
       someFilteredSelected,
     ]
   );
 
   const table = useReactTable({
-    data: filteredItems,
+    data: displayItems,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    enableSorting: true,
+    manualSorting: true,
     state: {
       sorting,
     },
@@ -219,8 +205,26 @@ export function TodoTable({ onEdit }: TodoTableProps) {
 
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
+  const lastVirtualIndex = virtualItems[virtualItems.length - 1]?.index ?? -1;
 
-  // パディング行を計算
+  // Lazy load: grow visible window when virtualizer nears the end
+  useEffect(() => {
+    if (lastVirtualIndex < 0) return;
+    if (
+      lastVirtualIndex >= displayItems.length - 10 &&
+      visibleCount < processedItems.length
+    ) {
+      setVisibleCount((prev) =>
+        Math.min(prev + PAGE_SIZE, processedItems.length)
+      );
+    }
+  }, [
+    lastVirtualIndex,
+    displayItems.length,
+    visibleCount,
+    processedItems.length,
+  ]);
+
   const paddingTop = virtualItems.length > 0 ? virtualItems[0]?.start ?? 0 : 0;
   const paddingBottom =
     virtualItems.length > 0

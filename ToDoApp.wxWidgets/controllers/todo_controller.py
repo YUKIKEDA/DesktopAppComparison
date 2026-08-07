@@ -1,7 +1,10 @@
 """Todo controller - business logic."""
 import sys
+import threading
 from typing import List, Optional, Set, Callable
 from datetime import datetime
+
+import wx
 
 from models.todo_item import TodoItem
 from models.data_service import DataService, ProjectData
@@ -15,6 +18,7 @@ class TodoController:
         self._selected_ids: Set[int] = set()
         self._data_service = DataService()
         self._callbacks: List[Callable] = []
+        self._io_lock = threading.Lock()
 
     def add_callback(self, callback: Callable) -> None:
         """Add callback for data changes."""
@@ -32,23 +36,65 @@ class TodoController:
                 # Continue with other callbacks even if one fails
 
     def load_data(self) -> None:
-        """Load data from storage."""
+        """Load data from storage (synchronous). Prefer load_data_async."""
         project_data = self._data_service.load_data()
         self._items = project_data.items
         self._notify()
 
+    def load_data_async(self, on_done: Optional[Callable[[Optional[Exception]], None]] = None) -> None:
+        """Load project.json on a worker thread; apply on UI via CallAfter."""
+        def worker():
+            err = None
+            project_data = ProjectData()
+            try:
+                with self._io_lock:
+                    project_data = self._data_service.load_data()
+            except Exception as e:
+                err = e
+
+            def apply():
+                if err is None:
+                    self._items = project_data.items
+                    self._notify()
+                if on_done:
+                    on_done(err)
+
+            wx.CallAfter(apply)
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def save_data(self) -> None:
-        """Save data to storage."""
+        """Save data to storage (synchronous). Prefer save_data_async."""
         project_data = ProjectData(items=self._items)
         self._data_service.save_data(project_data)
+
+    def save_data_async(self, on_done: Optional[Callable[[Optional[Exception]], None]] = None) -> None:
+        """Save project.json on a worker thread."""
+        snapshot = ProjectData(items=list(self._items))
+
+        def worker():
+            err = None
+            try:
+                with self._io_lock:
+                    self._data_service.save_data(snapshot)
+            except Exception as e:
+                err = e
+
+            def apply():
+                if on_done:
+                    on_done(err)
+
+            wx.CallAfter(apply)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def get_items(self) -> List[TodoItem]:
         """Get all items."""
         return self._items
 
-    def get_filtered_items(self, filters: List[dict]) -> List[TodoItem]:
-        """Get filtered items."""
-        result = list(self._items)
+    def get_filtered_items(self, filters: List[dict], items: Optional[List[TodoItem]] = None) -> List[TodoItem]:
+        """Get filtered items. Safe to call off the UI thread with a snapshot."""
+        result = list(items if items is not None else self._items)
 
         for filter_config in filters:
             column_id = filter_config.get("columnId")
@@ -83,7 +129,7 @@ class TodoController:
         return result
 
     def get_sorted_items(self, items: List[TodoItem], sorts: List[dict]) -> List[TodoItem]:
-        """Get sorted items."""
+        """Get sorted items. Safe to call off the UI thread."""
         result = list(items)
 
         if not sorts:
@@ -127,12 +173,12 @@ class TodoController:
         # Validate required fields
         if not isinstance(item_data, dict):
             raise ValueError(f"Expected dict, got {type(item_data)}")
-        
+
         required_fields = ["title", "status", "priority"]
         missing_fields = [field for field in required_fields if field not in item_data]
         if missing_fields:
             raise ValueError(f"Missing required fields: {missing_fields}")
-        
+
         # Calculate next ID
         max_id = max([item.id for item in self._items], default=0) if self._items else 0
         now = datetime.now().isoformat()
@@ -191,25 +237,104 @@ class TodoController:
         self._notify()
 
     def export_data(self, parent=None) -> bool:
-        """Export data."""
-        project_data = ProjectData(items=self._items)
-        return self._data_service.export_data(project_data, parent)
+        """Export data (file dialog on UI, write async via export_data_async)."""
+        return self.export_data_async(parent=parent)
+
+    def export_data_async(
+        self,
+        parent=None,
+        on_done: Optional[Callable[[bool, Optional[Exception]], None]] = None,
+    ) -> bool:
+        """Show save dialog on UI thread, write file on a worker thread."""
+        path = self._data_service.choose_export_path(parent)
+        if not path:
+            if on_done:
+                on_done(False, None)
+            return False
+
+        snapshot = ProjectData(items=list(self._items))
+
+        def worker():
+            err = None
+            ok = False
+            try:
+                with self._io_lock:
+                    ok = self._data_service.write_json_file(path, snapshot)
+            except Exception as e:
+                err = e
+                ok = False
+
+            def apply():
+                if on_done:
+                    on_done(ok, err)
+
+            wx.CallAfter(apply)
+
+        threading.Thread(target=worker, daemon=True).start()
+        return True
 
     def import_data(self, parent=None) -> bool:
-        """Import data."""
-        project_data = self._data_service.import_data(parent)
-        if project_data:
-            self._apply_imported_data(project_data)
-            return True
-        return False
+        """Import via dialog (async). Returns True if a path was chosen."""
+        return self.import_data_async(parent=parent)
+
+    def import_data_async(
+        self,
+        parent=None,
+        on_done: Optional[Callable[[bool, Optional[Exception]], None]] = None,
+    ) -> bool:
+        """Show open dialog on UI thread, read/parse on a worker thread."""
+        path = self._data_service.choose_import_path(parent)
+        if not path:
+            if on_done:
+                on_done(False, None)
+            return False
+        return self.import_from_path_async(path, parent=parent, on_done=on_done)
 
     def import_from_path(self, path: str, parent=None) -> bool:
-        """Import data from a file path."""
+        """Import data from a file path (synchronous). Prefer async."""
         project_data = self._data_service.import_from_path(path, parent=parent)
         if project_data:
             self._apply_imported_data(project_data)
             return True
         return False
+
+    def import_from_path_async(
+        self,
+        path: str,
+        parent=None,
+        on_done: Optional[Callable[[bool, Optional[Exception]], None]] = None,
+    ) -> bool:
+        """Import from path on a worker thread."""
+        def worker():
+            err = None
+            project_data = None
+            try:
+                with self._io_lock:
+                    project_data = self._data_service.import_from_path(
+                        path, parent=None, show_errors=False
+                    )
+            except Exception as e:
+                err = e
+
+            def apply():
+                ok = False
+                if err is None and project_data is not None:
+                    self._apply_imported_data(project_data)
+                    ok = True
+                elif err is not None or project_data is None:
+                    wx.MessageBox(
+                        f"インポートに失敗しました: {err or 'invalid data'}",
+                        "エラー",
+                        wx.OK | wx.ICON_ERROR,
+                        parent,
+                    )
+                if on_done:
+                    on_done(ok, err)
+
+            wx.CallAfter(apply)
+
+        threading.Thread(target=worker, daemon=True).start()
+        return True
 
     def _apply_imported_data(self, project_data: ProjectData) -> None:
         """Apply imported project data."""
@@ -243,4 +368,3 @@ class TodoController:
     def open_data_folder(self) -> None:
         """Open data folder."""
         self._data_service.open_data_folder()
-

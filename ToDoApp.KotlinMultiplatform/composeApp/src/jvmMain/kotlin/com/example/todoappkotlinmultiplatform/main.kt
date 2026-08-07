@@ -67,6 +67,7 @@ fun main(args: Array<String>) = application {
         if (isExiting) return
         isExiting = true
         saveCurrentGeometry()
+        detailWindowIds = emptySet()
         TraySupport.uninstall()
         exitApplication()
     }

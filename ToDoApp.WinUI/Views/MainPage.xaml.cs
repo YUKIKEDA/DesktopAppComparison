@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using ToDoApp.WinUI.Models;
 using ToDoApp.WinUI.Services;
 using ToDoApp.WinUI.ViewModels;
@@ -16,6 +17,7 @@ namespace ToDoApp.WinUI.Views
     {
         public MainWindowViewModel ViewModel { get; }
         private readonly ThemeService _themeService;
+        private ScrollViewer? _dataGridScrollViewer;
 
         public MainPage()
         {
@@ -23,6 +25,56 @@ namespace ToDoApp.WinUI.Views
             var dataService = new DataService();
             _themeService = new ThemeService(dataService.GetDataDirectory());
             ViewModel = new MainWindowViewModel(dataService);
+            TodoDataGrid.Loaded += TodoDataGrid_Loaded;
+        }
+
+        private void TodoDataGrid_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (_dataGridScrollViewer != null)
+            {
+                _dataGridScrollViewer.ViewChanged -= OnDataGridViewChanged;
+            }
+
+            _dataGridScrollViewer = FindVisualChild<ScrollViewer>(TodoDataGrid);
+            if (_dataGridScrollViewer != null)
+            {
+                _dataGridScrollViewer.ViewChanged += OnDataGridViewChanged;
+            }
+        }
+
+        private void OnDataGridViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+        {
+            if (_dataGridScrollViewer == null)
+            {
+                return;
+            }
+
+            var remaining = _dataGridScrollViewer.ScrollableHeight - _dataGridScrollViewer.VerticalOffset;
+            if (remaining < 80)
+            {
+                ViewModel.LoadMoreVisible();
+            }
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            var count = VisualTreeHelper.GetChildrenCount(parent);
+            for (var i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typed)
+                {
+                    return typed;
+                }
+
+                var result = FindVisualChild<T>(child);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
         }
 
         private async void Grid_Loaded(object sender, RoutedEventArgs e)
@@ -105,6 +157,7 @@ namespace ToDoApp.WinUI.Views
             }
 
             var detailWindow = new DetailWindow(item, ViewModel);
+            ViewModel.RegisterDetailWindow(detailWindow);
             detailWindow.Activate();
         }
 
