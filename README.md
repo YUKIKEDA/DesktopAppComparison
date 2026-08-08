@@ -592,20 +592,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### 起動時間とUI応答性
 
-| Framework             | Startup (s) | Render 1000 (s) | Scroll FPS | Filter response (ms) | Notes                                       |
-| --------------------- | ----------- | --------------- | ---------- | -------------------- | ------------------------------------------- |
-| Avalonia              | 1.21        | 0.14            | 60.2       | 18.9                 | -                                           |
-| Compose Multiplatform | 1.34        | 0.04            | 31.4       | 24.8                 | Scroll paced at 16ms ticks                  |
-| Electron              | 0.48        | 0.01            | 60.0       | 17.6                 | -                                           |
-| Flutter               | 0.26        | 0.03            | 58.8       | 18.7                 | Sync filter for typical list sizes          |
-| GPUI                  | -           | -               | -          | -                    | -                                           |
-| MAUI                  | -           | -               | -          | -                    | Excluded (WinUI3 wrapper)                   |
-| React Native          | -           | -               | -          | -                    | Excluded (insufficient info)                |
-| Tauri                 | 0.44        | 0.04            | 60.4       | 17.3                 | -                                           |
-| WinForms              | -           | -               | -          | -                    | Excluded (limited UI)                       |
-| WPF                   | 0.93        | 0.46            | 22.3       | 143.5                | -                                           |
-| WinUI3                | 0.60        | 1.28            | 60.2       | 15.2                 | Packaged LocalState import path             |
-| wxWidgets             | 0.22        | 0.01            | 25.9       | 21.0                 | `uv run` (not Nuitka)                       |
+| Framework             | Startup (s) | Render 1000 (s) | Scroll FPS | Filter response (ms) | Notes                              |
+| --------------------- | ----------- | --------------- | ---------- | -------------------- | ---------------------------------- |
+| Avalonia              | 1.21        | 0.14            | 60.2       | 18.9                 | -                                  |
+| Compose Multiplatform | 1.34        | 0.04            | 31.4       | 24.8                 | Scroll paced at 16ms ticks         |
+| Electron              | 0.48        | 0.01            | 60.0       | 17.6                 | -                                  |
+| Flutter               | 0.26        | 0.03            | 58.8       | 18.7                 | Sync filter for typical list sizes |
+| GPUI                  | -           | -               | -          | -                    | -                                  |
+| MAUI                  | -           | -               | -          | -                    | Excluded (WinUI3 wrapper)          |
+| React Native          | -           | -               | -          | -                    | Excluded (insufficient info)       |
+| Tauri                 | 0.44        | 0.04            | 60.4       | 17.3                 | -                                  |
+| WinForms              | -           | -               | -          | -                    | Excluded (limited UI)              |
+| WPF                   | 0.93        | 0.46            | 22.3       | 143.5                | -                                  |
+| WinUI3                | 0.60        | 1.28            | 60.2       | 15.2                 | Packaged LocalState import path    |
+| wxWidgets             | 0.22        | 0.01            | 25.9       | 21.0                 | `uv run` (not Nuitka)              |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -625,20 +625,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 ### 開発体験の評価
 
-| Framework             | Ease of use | Docs | Community | Testability | Overall | Notes                        |
-| --------------------- | ----------- | ---- | --------- | ----------- | ------- | ---------------------------- |
-| Avalonia              | -           | -    | -         | -           | -       | -                            |
-| Compose Multiplatform | -           | -    | -         | -           | -       | -                            |
-| Electron              | -           | -    | -         | -           | -       | -                            |
-| Flutter               | -           | -    | -         | -           | -       | -                            |
-| GPUI                  | -           | -    | -         | -           | -       | -                            |
-| MAUI                  | -           | -    | -         | -           | -       | Excluded (WinUI3 wrapper)    |
-| React Native          | -           | -    | -         | -           | -       | Excluded (insufficient info) |
-| Tauri                 | -           | -    | -         | -           | -       | -                            |
-| WinForms              | -           | -    | -         | -           | -       | Excluded (limited UI)        |
-| WPF                   | -           | -    | -         | -           | -       | -                            |
-| WinUI3                | -           | -    | -         | -           | -       | Pending                      |
-| wxWidgets             | -           | -    | -         | -           | -       | -                            |
+| Framework             | Ease of use | Docs  | Community | Testability | Overall | Notes                                |
+| --------------------- | ----------- | ----- | --------- | ----------- | ------- | ------------------------------------ |
+| Avalonia              | ****        | ***   | **        | ****        | ***     | XAML/MVVM; smaller desktop community |
+| Compose Multiplatform | **          | **    | **        | **          | **      | UI smooth; desktop/Gradle friction   |
+| Electron              | *****       | ***** | *****     | *****       | *****   | Web stack; Playwright ceiling        |
+| Flutter               | ****        | ***** | *****     | *****       | ****    | Strong docs / integration_test       |
+| GPUI                  | -           | -     | -         | -           | -       | Excluded (no file picker)            |
+| MAUI                  | -           | -     | -         | -           | -       | Excluded (WinUI3 wrapper)            |
+| React Native          | -           | -     | -         | -           | -       | Excluded (insufficient info)         |
+| Tauri                 | ***         | ***   | ***       | ****        | ***     | Easy front; Rust/WebView2 cost       |
+| WinForms              | -           | -     | -         | -           | -       | Excluded (limited UI)                |
+| WPF                   | ***         | ****  | ****      | ***         | ***     | Mature docs; verbose XAML/DataGrid   |
+| WinUI3                | *           | **    | **        | **          | *       | Appx/packaging heaviest DX cost      |
+| wxWidgets             | **          | **    | *         | *           | *       | Simple code; weak UI test ecosystem  |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -647,7 +647,7 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Community: コミュニティ
 - Testability: テスタビリティ
 - Overall: 総合評価
-- Notes: 備考
+- Notes: 備考（英語・短い要約）
 
 **評価基準**:
 
@@ -656,3 +656,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Community: `*****`（5段階）
 - Testability: `*****`（5段階） - UIテスト自動化のしやすさ、ツール成熟度、テスト用フック（AutomationId / semantics など）
 - Overall: `*****`（5段階）
+
+**各フレームワークの解説**:
+- **Avalonia**: XAML+MVVM が WPF 知識で転用しやすい。Headless/UI テストはあるが、デスクトップ専業でコミュニティは小さめ
+- **Compose Multiplatform**: Compose UI 自体は快適。desktop / Gradle / 配布まわりの摩擦が大きく、desktop 向け情報も少なめ
+- **Electron**: Web スタックをそのまま使える。ドキュメント・コミュニティ・Playwright 等の UI テストがこの比較では天井
+- **Flutter**: ウィジェット開発は速い。公式 docs と `integration_test` が強い。Windows 固有はたまに調査コスト
+- **Tauri**: フロントは Electron に近い。Rust 側と WebView2 / ビルドで学習コストがある
+- **WPF**: 成熟して情報は豊富。XAML / DataGrid の記述量は多く、UI Automation / FlaUI 系が使える
+- **WinUI3**: 機能は揃うが、Appx 登録・パッケージ制約が本リポで最大の DX 負荷。UIA はあるが環境構築コストが高い
+- **wxWidgets**（wxPython）: 実装は素直。Python+wx のデスクトップ情報と UI 自動テストのエコシステムは弱い
+- **GPUI / MAUI / React Native / WinForms**: 他表と同じ理由で除外（Notes 参照）
+
+**評価メモ**（2026-08、本リポ実装体験ベース）:
+- Ease は同一 Todo 実装時のつまずき・ビルド・デバッグのしやすさ。Docs / Community は公式資料とエコシステムの成熟度も加味
+- Testability は本リポで UI 自動テスト未導入のため、フック／ツール成熟度の見込み評価
+- 星は実装 8 FW 内の**相対正規化**（各軸で概ね 1〜5 を使う）。絶対的な「業界合格点」ではなく差別化のための尺度
+- Overall は 4 軸の概ね平均（端数は体感で丸め）。天井 Electron / 床 WinUI・wx
