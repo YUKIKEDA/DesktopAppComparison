@@ -1,6 +1,134 @@
 # Todo App
 
-モダンなデスクトップアプリケーション開発F/Wについて、メモリ使用量やCPU使用率を比較するための簡単なTodoアプリ
+モダンなデスクトップ向けフレームワークで、同じ Todo（テーブル型プロジェクト管理）アプリを実装し、機能・実装コスト・実行時パフォーマンス・開発体験を比較するリポジトリです。
+
+## 総評
+
+同一機能を **8 フレームワーク**（Avalonia / Compose Multiplatform / Electron / Flutter / Tauri / WPF / WinUI3 / wxWidgets）で実装し、Windows 上で計測した（2026-08）。GPUI / MAUI / React Native / WinForms は要件または重複のため除外。
+
+読み手が先に知りたい結論だけをここに置く。詳細な表・測定条件・除外理由は後続セクションを参照。
+
+### 総合ランキング
+
+実装 8 FW を、次の **5 軸を等重み**（各 1〜5・高いほど良い・相対正規化）で平均し順位付けした。
+
+| Axis           | What it covers                                                       |
+| -------------- | -------------------------------------------------------------------- |
+| Runtime        | Memory peak + CPU peak (lower is better → higher score)              |
+| Responsiveness | Startup, Render 1000, Scroll FPS, Filter (faster/smoother → higher)  |
+| Footprint      | Bundle size (smaller → higher; Tauri excludes WebView2 runtime)      |
+| DX             | Developer-experience Overall (relative within this repo)             |
+| Features       | Desktop capability gaps vs this app's requirements (multi-window, …) |
+
+| Rank | Framework             | Score | Runtime | Resp. | Footprint | DX  | Feat. | Blurb (EN)                                      |
+| ---- | --------------------- | ----- | ------- | ----- | --------- | --- | ----- | ----------------------------------------------- |
+| 1    | Tauri                 | 4.3   | 3.5     | 5     | 5         | 3   | 5     | Best overall after weighting desktop features   |
+| 2    | wxWidgets             | 3.8   | 5       | 4     | 4.5       | 1   | 4.5   | Lightest runtime; full windows; weak DX         |
+| 3    | Flutter               | 3.8   | 3.5     | 5     | 4.5       | 4   | 2     | Strong elsewhere; multi-window `N` is a big hit |
+| 4    | Electron              | 3.7   | 2.5     | 5     | 1         | 5   | 5     | DX/UI ceiling; complete desktop features        |
+| 5    | Avalonia              | 3.7   | 4       | 3.5   | 3.5       | 3   | 4.5   | Steady .NET cross-platform middle ground        |
+| 6    | WinUI3                | 3.3   | 4       | 2.5   | 4         | 1   | 5     | Lean memory + full features; Appx DX hurts      |
+| 7    | WPF                   | 3.1   | 4       | 2     | 2         | 3   | 4.5   | Mature; weak scroll/filter latency              |
+| 8    | Compose Multiplatform | 2.6   | 1       | 3     | 3         | 2   | 4     | Nice UI; heavy RAM and desktop friction         |
+
+**軸の解説**:
+- **Runtime**: メモリ Peak・CPU Peak。軽い／低いほど高得点
+- **Responsiveness**: Startup・Render 1000・Scroll FPS・Filter。速い／滑らかほど高得点
+- **Footprint**: Bundle size。小さいほど高得点（Tauri は WebView2 ランタイム別配布）
+- **DX**: 開発体験 Overall（本リポ相対評価）
+- **Features**: 本アプリ要件に対するデスクトップ機能の欠落。マルチウィンドウ `N`、透過 `P`、ファイル関連付け `P` などを減点（Flutter の multi-window 非対応はここが大きく効く）
+
+**順位の解説**:
+- **1 Tauri**: Features を入れたあと総合首位。配布・CPU・デスクトップ機能が揃う
+- **2 wxWidgets**: 実行時は最軽量級でウィンドウ機能も充足。DX が足を引っ張る（同点 Flutter より Features で上位）
+- **3 Flutter**: 起動・UI・DX・サイズは強いが、**第一級マルチウィンドウ非対応**で Features を大きく減点
+- **4 Electron**: DX・UI・機能は天井。バンドルが重い
+- **5 Avalonia**: .NET クロスプラットフォームの堅実枠
+- **6 WinUI3**: メモリと機能は良いが Appx DX と Render が弱い
+- **7 WPF**: 成熟だがスクロール／フィルタ応答が弱い
+- **8 Compose Multiplatform**: UI は良いがメモリと desktop 摩擦が大きい
+
+**読み方**:
+- 「どれか一つ」なら **Tauri**（機能込みの総合）。マルチウィンドウが不要で DX を取るなら **Flutter** / **Electron**
+- **Electron** は総合 4 位でも DX 最優先なら実質の本命になりうる（用途別表を参照）
+- スコアは本リポ条件での相対値であり、絶対的な業界順位ではない
+
+### ひと目で見る結果
+
+| Framework             | Mem peak (MB) | CPU peak (%) | Startup (s) | Bundle (MB) | DX    | Snapshot (EN)                           |
+| --------------------- | ------------- | ------------ | ----------- | ----------- | ----- | --------------------------------------- |
+| Avalonia              | 118           | 8.8          | 1.21        | 37          | ***   | Solid .NET cross-platform; mid DX       |
+| Compose Multiplatform | 399           | 10.7         | 1.34        | 45          | **    | Smooth UI; heavy RAM / desktop friction |
+| Electron              | 252           | 8.0          | 0.48        | 293         | ***** | Best DX; large bundle / mid memory      |
+| Flutter               | 124           | 13.4         | 0.26        | 27          | ****  | Fast start; no first-class multi-window |
+| Tauri                 | 189           | 4.9          | 0.44        | 11          | ***   | Smallest bundle; low CPU; Rust cost     |
+| WPF                   | 114           | 8.0          | 0.93        | 155         | ***   | Mature .NET; weak scroll/filter latency |
+| WinUI3                | 97            | 7.0          | 0.60        | 30          | *     | Lean memory; Appx DX is heaviest        |
+| wxWidgets             | 23            | 5.8          | 0.22        | 24          | *     | Lightest RAM / start; weak ecosystem    |
+
+（数値は詳細表の Peak / Startup / Bundle / DX Overall。DX は実装 8 FW 内の相対評価。）
+
+### 文章でのまとめ
+
+- **メモリ**: wx が突出して軽い（Peak 23 MB）。続けて WinUI / WPF / Avalonia / Flutter が ~100 MB 帯。Compose が最も重い（~400 MB）。Electron / Tauri は WebView 込みで中〜大。
+- **CPU**: アイドルはいずれも低い。負荷ピークは Flutter の Add/Filter がやや高く、Tauri / wx は抑えめ。差は「どの操作が重いか」の違いが大きい。
+- **起動・UI**: 起動は wx / Flutter が速い。1000 件描画は Web 系と Compose / Flutter が速い一方、WinUI DataGrid は遅め、WPF はスクロール FPS・フィルタ応答が弱い。
+- **配布サイズ**: Tauri が最小（11 MB、WebView2 ランタイム別）。Electron が最大（~293 MB）。.NET self-contained はトリム有無で差が出る。
+- **開発体験**: Electron > Flutter ≫ Avalonia / Tauri / WPF > Compose ≫ WinUI / wx。Web スキル流用と公式エコシステムが効く。WinUI は Appx、Compose は Gradle/配布、wx は情報量・テスト基盤がボトルネック。
+- **機能面**: 実装 8 FW は基本 CRUD 等を概ね同水準。**Flutter のみマルチウィンドウがフレームワーク制約で `N`**（デスクトップ用途では大きい欠落）。ほか透過 `P` やファイル関連付け `P` なども差が出る
+
+### 用途別の目安
+
+| Priority                        | Picks              | Why (EN)                                         |
+| ------------------------------- | ------------------ | ------------------------------------------------ |
+| Fast hiring / shipping velocity | Electron, Flutter  | Strong DX, docs, and UI-test tooling             |
+| Need multi-window desktop UX    | Tauri, Electron, … | Avoid Flutter here (no first-class multi-window) |
+| Minimize memory                 | wxWidgets, WinUI3  | Lowest peaks (wx lightest)                       |
+| Minimize install size           | Tauri              | Smallest exe (WebView2 runtime separate)         |
+| Reuse .NET / XAML skills        | Avalonia, WPF      | Easy MVVM transfer; watch WPF UI latency         |
+| Balance size + CPU              | Tauri, Flutter     | Small–mid bundle; relatively fast startup        |
+| Native Windows look             | WinUI3             | Good memory; packaging DX is heavy               |
+
+**用途別の解説**:
+- **開発速度・人材調達**: Electron / Flutter。DX・ドキュメント・UI テストが強い（マルチウィンドウ必須なら Flutter は避ける）
+- **マルチウィンドウ必須**: Tauri / Electron ほか（Flutter は第一級 API がなく非対応）
+- **メモリ最小化**: wxWidgets / WinUI3。Peak が小さい（wx が最軽量）
+- **配布サイズ最小化**: Tauri。exe が最小（ランタイム前提に注意）
+- **.NET / XAML 資産の活用**: Avalonia / WPF。MVVM 転用しやすい。WPF は UI 応答に注意
+- **バランス（サイズ+CPU）**: Tauri / Flutter。小〜中バンドル、起動も比較的速い
+- **Windows ネイティブ見た目**: WinUI3。メモリは良いがパッケージ開発体験は重い
+
+**注意**: 総評は「同じ Todo をこのリポで実装・計測した結果」に限定される。アプリ規模・チームスキル・ターゲット OS が変われば最適解も変わる。
+
+### この README の読み方
+
+1. **総評**（本節）→ 総合ランキングと用途別の当たりをつける
+2. **[実行バイナリの場所](#実行バイナリの場所windows)** → 各アプリの起動パス
+3. **[比較結果](#比較結果)** → 機能・LOC・メモリ・CPU・UI・DX の詳細表
+4. **[内容](#内容)** → 要件・測定シナリオ・比較項目の定義（実装前スペック）
+
+### 実行バイナリの場所（Windows）
+
+計測・手元確認で使う Release 成果物のパス（リポジトリルート相対）。無い場合は各プロジェクトで Release ビルドしてから起動する。
+
+- **Avalonia**: `ToDoApp.Avalonia/bin/Release/net9.0/win-x64/ToDoApp.Avalonia.exe`
+- **Compose Multiplatform**: `ToDoApp.KotlinMultiplatform/composeApp/build/compose/binaries/main-release/app/com.example.todoappkotlinmultiplatform/com.example.todoappkotlinmultiplatform.exe`
+- **Electron**: `ToDoApp.Electron/release-measure/win-unpacked/Todo App.exe`
+- **Flutter**: `todoapp_flutter/build/windows/x64/runner/Release/todoapp_flutter.exe`
+- **Tauri**: `ToDoApp.Tauri/src-tauri/target/release/todoapp-tauri.exe`
+- **WPF**: `ToDoApp.Wpf/bin/Release/net8.0-windows/win-x64/ToDoApp.Wpf.exe`
+- **WinUI3**: `ToDoApp.WinUI/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/`（`ToDoApp.WinUI.exe` 直起動は不可。下記参照）
+- **wxWidgets**: `ToDoApp.wxWidgets/dist/main.dist/TodoApp.exe`（フォルダごと必要。onefile 単体は Defender 誤検知しやすい）
+
+**起動時の注意（日本語）**:
+- **Flutter**: 上記 exe をダブルクリック、または `cd todoapp_flutter` → `flutter build windows --release` 後に同じパス。開発中は `flutter run -d windows`
+- **Tauri**: 上記 exe。開発中は `cd ToDoApp.Tauri` → `npm run tauri dev`（WebView2 必須）
+- **WinUI3**: exe 直起動は `0xC000027B` で落ちるため `.\scripts\register_winui.ps1 -Launch`（要: 先に Release ビルドで `AppxManifest.xml` があること）
+- **wxWidgets**: standalone は `dist/main.dist/TodoApp.exe`。ソース確認は `cd ToDoApp.wxWidgets` → `uv run python main.py`（UI/CPU 計測と同系統）
+- **Electron**: `release-measure/win-unpacked` は計測用出力。無い場合はプロジェクト側で `electron-builder` 等の Release を再生成
+- **Compose**: Gradle の `createReleaseDistributable` / `packageReleaseDistributionForCurrentOS` 後の上記 exe
+
+---
 
 ## 内容
 

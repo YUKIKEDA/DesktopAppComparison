@@ -31,7 +31,6 @@ build.bat
 # 方法2: 手動でコマンドを実行
 python -m nuitka ^
     --standalone ^
-    --onefile ^
     --include-package=wx ^
     --include-package-data=wx ^
     --windows-console-mode=disable ^
@@ -54,7 +53,6 @@ chmod +x build.sh
 # 方法2: 手動でコマンドを実行
 python -m nuitka \
     --standalone \
-    --onefile \
     --include-package=wx \
     --include-package-data=wx \
     --include-module=models \
@@ -68,14 +66,15 @@ python -m nuitka \
 
 ## オプション説明
 
-- `--standalone`: スタンドアロン実行ファイルを作成（依存関係を含む）
-- `--onefile`: 単一のexeファイルにまとめる
+- `--standalone`: スタンドアロン実行ファイルを作成（依存関係を含む。出力は `dist/main.dist/` フォルダ）
 - `--include-package=wx`: wxPythonパッケージを含める（重要！）
 - `--include-package-data=wx`: wxPythonのデータファイルを含める
 - `--windows-console-mode=disable`: Windowsでコンソールウィンドウを非表示（GUIアプリ用）
 - `--include-module`: Pythonモジュールを含める
 - `--output-dir=dist`: 出力ディレクトリを指定
 - `--output-filename=TodoApp.exe`: 出力ファイル名を指定
+
+> Note: `--onefile` は使わない（Windows Defender が onefile スタブを誤検知しやすいため）。配布時は `dist/main.dist/` 一式をコピーする。
 
 ## アイコンの設定（オプション）
 
@@ -118,7 +117,7 @@ python -m nuitka \
 
 ## 配布
 
-ビルドが完了すると、`dist`フォルダに`TodoApp.exe`（Windows）または`TodoApp`（Linux/Mac）が生成されます。
+ビルドが完了すると、`dist/main.dist/TodoApp.exe`（Windows）または同等のバイナリが生成されます。
 
-このファイルを他のPCにコピーするだけで実行できます（同じOSの場合）。
+`main.dist` フォルダごとコピーして実行します（同じ OS 向け）。onefile 単体 exe は Defender 誤検知の対象になりやすいです。
 

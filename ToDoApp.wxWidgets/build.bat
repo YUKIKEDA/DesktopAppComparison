@@ -1,11 +1,10 @@
 @echo off
-REM Build script for Windows using Nuitka
+REM Build script for Windows using Nuitka (standalone folder, not onefile)
 
-echo Building TodoApp with Nuitka...
+echo Building TodoApp with Nuitka (standalone)...
 
 python -m nuitka ^
     --standalone ^
-    --onefile ^
     --include-package=wx ^
     --include-package-data=wx ^
     --windows-console-mode=disable ^
@@ -18,6 +17,6 @@ python -m nuitka ^
     main.py
 
 echo.
-echo Build complete! Check the dist folder for TodoApp.exe
+echo Build complete! Run dist\main.dist\TodoApp.exe
 pause
 
