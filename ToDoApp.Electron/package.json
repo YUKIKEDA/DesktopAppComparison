@@ -46,6 +46,13 @@
   "build": {
     "appId": "com.yuuuu.todoapp-electron",
     "productName": "Todo App",
+    "directories": {
+      "output": "release-measure"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
     "fileAssociations": [
       {
         "ext": "json",

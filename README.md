@@ -489,20 +489,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 ### 実装面の比較
 
-| Framework             | LOC | Dependencies | Build time (s) | Bundle size (MB) | Notes                        |
-| --------------------- | --- | ------------ | -------------- | ---------------- | ---------------------------- |
-| Avalonia              | -   | -            | -              | -                | Pending                      |
-| Compose Multiplatform | -   | -            | -              | -                | Pending                      |
-| Electron              | -   | -            | -              | -                | Pending                      |
-| Flutter               | -   | -            | -              | -                | Pending                      |
-| GPUI                  | -   | -            | -              | -                | Pending                      |
-| MAUI                  | -   | -            | -              | -                | Excluded (WinUI3 wrapper)    |
-| React Native          | -   | -            | -              | -                | Excluded (insufficient info) |
-| Tauri                 | -   | -            | -              | -                | Pending                      |
-| WinForms              | -   | -            | -              | -                | Excluded (limited UI)        |
-| WPF                   | -   | -            | -              | -                | Pending                      |
-| WinUI3                | -   | -            | -              | -                | Pending                      |
-| wxWidgets             | -   | -            | -              | -                | Pending                      |
+| Framework             | LOC  | Dependencies | Build time (s) | Bundle size (MB) | Notes                                            |
+| --------------------- | ---- | ------------ | -------------- | ---------------- | ------------------------------------------------ |
+| Avalonia              | 2616 | 7            | 12             | 37               | Self-contained + trimmed (single-file publish)   |
+| Compose Multiplatform | 1857 | 11           | 98             | 45               | MSI (`packageReleaseDistributionForCurrentOS`)   |
+| Electron              | 2424 | 12           | 26             | 293              | `win-unpacked` (`dist` + `dist-electron` only)   |
+| Flutter               | 2390 | 17           | 54             | 27               | `flutter build windows --release`                |
+| GPUI                  | -    | -            | -              | -                | Excluded (no file picker)                        |
+| MAUI                  | -    | -            | -              | -                | Excluded (unimplemented / WinUI3 overlap)        |
+| React Native          | -    | -            | -              | -                | Excluded (insufficient info)                     |
+| Tauri                 | 2266 | 25           | 146            | 11               | exe only (WebView2 runtime not included)         |
+| WinForms              | -    | -            | -              | -                | Excluded (limited UI)                            |
+| WPF                   | 2293 | 3            | 5              | 155              | Self-contained single-file (not trimmed)         |
+| WinUI3                | 2303 | 4            | 23             | 30               | Self-contained + trimmed publish                 |
+| wxWidgets             | 2473 | 1            | 456            | 24               | Nuitka onefile (`TodoApp.exe`)                   |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -511,6 +511,15 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Build time (s): ビルド時間（秒）
 - Bundle size (MB): バンドルサイズ（MB）
 - Notes: 備考
+
+**測定メモ**（2026-08-08、上記計測環境）:
+- LOC: アプリソースのみ（`.cs` / `.xaml` / `.axaml` / `.kt` / `.ts(x)` / `.js` / `.dart` / `.rs` / `.py` 等）。`node_modules` / `bin` / `obj` / `.venv` / Flutter の `windows` 等生成ツリーは除外
+- Dependencies: マニフェスト上の直接依存（.NET = `PackageReference`、Compose = `implementation`、Electron/Flutter = `dependencies`、Tauri = npm `dependencies` + Cargo `[dependencies]`、wx = `pyproject` の runtime 依存）。dev 専用は未計上
+- Build time / Bundle size: **プロジェクト成果物を毎回完全クリーンしたうえで Release 配布ビルドを 3 回実行し、平均値**（秒・MBは四捨五入）。測定スクリプト: `scripts/measure_impl.ps1`
+  - 共通前提: グローバルなパッケージキャッシュは事前リストア済み（NuGet / npm / cargo registry / pub / Gradle wrapper）。ネットワーク取得時間は計測外
+  - 各 run 前に `bin`/`obj`/`dist`/`target`/`build` 等の成果物を削除。Gradle は `--no-build-cache --no-configuration-cache`、Nuitka は `--disable-ccache`
+  - コマンド: `dotnet publish` / Gradle `packageReleaseDistributionForCurrentOS` / `tsc`+`vite`+`electron-builder` / `flutter build windows --release` / `vite`+`cargo build --release` / Nuitka onefile
+- Bundle size: 実行可能な配布物フォルダ、または単一 exe / MSI（Notes 参照）。Electron は `files` を `dist`/`dist-electron` に限定し、旧成果物の混入を排除
 
 ### 実行時パフォーマンスの比較
 
