@@ -55,6 +55,36 @@ let tray: Tray | null = null;
 let isQuitting = false;
 const pendingOpenFiles: string[] = [];
 
+interface CpuBenchConfig {
+  enabled: boolean;
+  phaseFile: string | null;
+  jsonPath: string | null;
+}
+
+function parseCpuBenchArgs(argv: string[]): CpuBenchConfig {
+  let enabled = false;
+  let phaseFile: string | null = null;
+  for (const arg of argv) {
+    if (!arg) continue;
+    if (arg === "--cpu-bench") {
+      enabled = true;
+    } else if (arg.startsWith("--cpu-bench-phase=")) {
+      phaseFile = arg.slice("--cpu-bench-phase=".length);
+    }
+  }
+  return {
+    enabled,
+    phaseFile,
+    jsonPath: findJsonFromArgv(argv),
+  };
+}
+
+let cpuBenchConfig: CpuBenchConfig = {
+  enabled: false,
+  phaseFile: null,
+  jsonPath: null,
+};
+
 function parseProjectData(content: string): ProjectData {
   const data = JSON.parse(content);
   if (!data || !Array.isArray(data.items)) {
@@ -415,6 +445,24 @@ async function setupIpcHandlers() {
       }).show();
     }
   );
+
+  // CPU bench
+  ipcMain.handle("cpu-bench:getConfig", async (): Promise<CpuBenchConfig> => {
+    return cpuBenchConfig;
+  });
+
+  ipcMain.handle(
+    "cpu-bench:writePhase",
+    async (_event, phase: string): Promise<void> => {
+      if (!cpuBenchConfig.phaseFile || typeof phase !== "string") return;
+      await fs.writeFile(cpuBenchConfig.phaseFile, `${phase}\n`, "utf-8");
+    }
+  );
+
+  ipcMain.handle("cpu-bench:quit", async (): Promise<void> => {
+    isQuitting = true;
+    app.quit();
+  });
 }
 
 async function createWindow() {
@@ -505,9 +553,12 @@ if (!gotTheLock) {
     if (process.platform === "win32") {
       app.setAppUserModelId("com.yuuuu.todoapp-electron");
     }
+    cpuBenchConfig = parseCpuBenchArgs(process.argv);
     setupIpcHandlers();
     createTray();
     void createWindow().then(() => {
+      // When cpu-bench owns the json import path, renderer imports via getCpuBenchConfig
+      if (cpuBenchConfig.enabled) return;
       const jsonPath = findJsonFromArgv(process.argv);
       if (jsonPath) {
         sendOpenFile(jsonPath);

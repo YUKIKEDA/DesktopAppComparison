@@ -95,6 +95,32 @@ class TodoTable(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
             print(f"ERROR in _do_set_item_count: {error_msg}", file=sys.stderr)
             wx.LogError(error_msg)
 
+    def expand_visible(self, step: int = PAGE_SIZE) -> bool:
+        """Expand lazy window by step. Returns False when already at end."""
+        total = len(self._items)
+        if self._visible_count >= total:
+            return False
+        new_count = min(self._visible_count + step, total)
+        if new_count == self._visible_count:
+            return False
+        self._visible_count = new_count
+        self.SetItemCount(new_count)
+        if new_count > 0:
+            self.RefreshItems(0, new_count - 1)
+        return True
+
+    def reset_visible(self) -> None:
+        """Reset lazy window to one page."""
+        self._visible_count = min(PAGE_SIZE, len(self._items))
+        self.SetItemCount(self._visible_count)
+        if self._visible_count > 0:
+            self.RefreshItems(0, self._visible_count - 1)
+        else:
+            self.Refresh()
+
+    def get_visible_count(self) -> int:
+        return self._visible_count
+
     def _maybe_load_more(self) -> None:
         """Increase visible window when scrolled near the end."""
         total = len(self._items)

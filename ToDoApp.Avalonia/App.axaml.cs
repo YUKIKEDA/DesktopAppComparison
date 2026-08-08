@@ -45,14 +45,47 @@ public partial class App : Application
                 DisposeTrayIcons();
             };
 
-            var jsonPath = desktop.Args?.FirstOrDefault(IsJsonPath);
-            if (jsonPath != null && _mainWindow.DataContext is MainWindowViewModel viewModel)
+            var args = desktop.Args ?? Array.Empty<string>();
+            var jsonPath = args.FirstOrDefault(IsJsonPath);
+            if (CpuBench.IsEnabled(args) && _mainWindow.DataContext is MainWindowViewModel benchVm)
+            {
+                var phasePath = CpuBench.ResolvePhasePath(args);
+                _ = RunCpuBenchAsync(benchVm, jsonPath, phasePath);
+            }
+            else if (jsonPath != null && _mainWindow.DataContext is MainWindowViewModel viewModel)
             {
                 _ = viewModel.ImportFromPathAsync(jsonPath);
             }
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async System.Threading.Tasks.Task RunCpuBenchAsync(
+        MainWindowViewModel viewModel,
+        string? jsonPath,
+        string phasePath)
+    {
+        try
+        {
+            CpuBench.SetPhase(phasePath, "boot");
+            if (jsonPath != null)
+            {
+                await viewModel.ImportFromPathAsync(jsonPath);
+            }
+
+            await CpuBench.RunAsync(viewModel, phasePath);
+        }
+        catch (Exception ex)
+        {
+            try { CpuBench.SetPhase(phasePath, "error"); } catch { }
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
+        finally
+        {
+            try { RequestExit(); } catch { }
+            Environment.Exit(0);
+        }
     }
 
     public void RequestExit()

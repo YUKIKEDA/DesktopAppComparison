@@ -23,18 +23,25 @@ interface TodoTableProps {
 }
 
 export function TodoTable({ onEdit }: TodoTableProps) {
-  const { items, selectedIds, filters, toggleSelection } = useTodoStore();
+  const {
+    items,
+    selectedIds,
+    filters,
+    toggleSelection,
+    visibleCount,
+    setVisibleCount,
+    resetVisibleCount,
+  } = useTodoStore();
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [processedItems, setProcessedItems] = useState<TodoItem[]>([]);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const processGenRef = useRef(0);
 
   // Reset windowed count when filter/sort/source changes
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [items, filters, sorting]);
+    resetVisibleCount();
+  }, [items, filters, sorting, resetVisibleCount]);
 
   // Filter/sort off the critical path (idle / setTimeout(0))
   useEffect(() => {
@@ -214,8 +221,8 @@ export function TodoTable({ onEdit }: TodoTableProps) {
       lastVirtualIndex >= displayItems.length - 10 &&
       visibleCount < processedItems.length
     ) {
-      setVisibleCount((prev) =>
-        Math.min(prev + PAGE_SIZE, processedItems.length)
+      setVisibleCount(
+        Math.min(visibleCount + PAGE_SIZE, processedItems.length)
       );
     }
   }, [
@@ -223,6 +230,7 @@ export function TodoTable({ onEdit }: TodoTableProps) {
     displayItems.length,
     visibleCount,
     processedItems.length,
+    setVisibleCount,
   ]);
 
   const paddingTop = virtualItems.length > 0 ? virtualItems[0]?.start ?? 0 : 0;

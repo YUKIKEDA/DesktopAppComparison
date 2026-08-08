@@ -26,10 +26,19 @@ namespace ToDoApp.WinUI
             _window = new MainWindow();
             _window.Activate();
 
-            var jsonPath = FindJsonPath(Environment.GetCommandLineArgs())
+            var cmdArgs = Environment.GetCommandLineArgs();
+            var jsonPath = FindJsonPath(cmdArgs)
                            ?? FindJsonPathFromLaunchArgs(args.Arguments)
-                           ?? FindJsonPathFromAppLifecycle();
-            if (jsonPath != null)
+                           ?? FindJsonPathFromAppLifecycle()
+                           ?? CpuBench.TryConsumeRequestJsonPath();
+
+            if (CpuBench.IsEnabled(cmdArgs))
+            {
+                var phasePath = CpuBench.ResolvePhasePath(cmdArgs);
+                CpuBench.ClearRequestFile();
+                _ = RunCpuBenchAsync(jsonPath, phasePath);
+            }
+            else if (jsonPath != null)
             {
                 _ = ImportJsonAsync(jsonPath);
             }
@@ -43,6 +52,29 @@ namespace ToDoApp.WinUI
             }
 
             await mainWindow.MainPage.ViewModel.ImportFromPathAsync(path);
+        }
+
+        private async System.Threading.Tasks.Task RunCpuBenchAsync(string? jsonPath, string phasePath)
+        {
+            try
+            {
+                if (_window is not MainWindow mainWindow || mainWindow.MainPage == null)
+                {
+                    return;
+                }
+
+                var viewModel = mainWindow.MainPage.ViewModel;
+                if (jsonPath != null)
+                {
+                    await viewModel.ImportFromPathAsync(jsonPath);
+                }
+
+                await CpuBench.RunAsync(viewModel, phasePath, viewModel.DispatcherQueue);
+            }
+            finally
+            {
+                Environment.Exit(0);
+            }
         }
 
         private static string? FindJsonPath(IEnumerable<string> args)

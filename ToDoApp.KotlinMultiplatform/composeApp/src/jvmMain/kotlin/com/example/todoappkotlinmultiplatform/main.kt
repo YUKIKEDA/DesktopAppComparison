@@ -16,6 +16,7 @@ import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetDropEvent
 import java.io.File
+import kotlin.system.exitProcess
 
 fun main(args: Array<String>) = application {
     val dataService = remember { DataService() }
@@ -82,12 +83,28 @@ fun main(args: Array<String>) = application {
         }
     }
 
-    // File association (argv only): import .json paths passed at startup
+    // File association (argv) + optional --cpu-bench
     LaunchedEffect(Unit) {
-        args.filter { it.endsWith(".json", ignoreCase = true) }
+        val jsonFiles = args
+            .filter { it.endsWith(".json", ignoreCase = true) }
             .map { File(it) }
             .filter { it.isFile }
-            .forEach { viewModel.importFromPath(it.absolutePath) }
+
+        for (file in jsonFiles) {
+            viewModel.importFromPathSuspend(file.absolutePath)
+        }
+
+        if (cpuBenchEnabled(args)) {
+            viewModel.suppressSave = true
+            viewModel.cancelPendingSave()
+            val phasePath = resolveCpuBenchPhasePath(args)
+            try {
+                runCpuBench(viewModel, phasePath)
+            } finally {
+                exitApp()
+                exitProcess(0)
+            }
+        }
     }
 
     Window(

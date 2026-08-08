@@ -25,6 +25,7 @@ def show_error(title: str, message: str):
 
 try:
     from views.main_frame import MainFrame
+    from utils.cpu_bench import parse_cpu_bench_args
 except Exception as e:
     show_error("インポートエラー", f"MainFrameのインポートに失敗しました:\n{str(e)}\n\n{traceback.format_exc()}")
     sys.exit(1)
@@ -34,6 +35,8 @@ def _json_paths_from_argv(argv):
     """Return existing .json paths from argv (file association / open-with)."""
     paths = []
     for arg in argv[1:]:
+        if arg.startswith("--"):
+            continue
         if arg.lower().endswith(".json") and os.path.isfile(arg):
             paths.append(os.path.abspath(arg))
     return paths
@@ -49,8 +52,13 @@ class TodoApp(wx.App):
             self.SetAppName("TodoApp.wxWidgets")
 
             json_paths = _json_paths_from_argv(sys.argv)
+            cpu_bench, phase_path = parse_cpu_bench_args(sys.argv)
             print("Creating main frame...")
-            frame = MainFrame(startup_json_paths=json_paths)
+            frame = MainFrame(
+                startup_json_paths=json_paths,
+                cpu_bench=cpu_bench,
+                cpu_bench_phase=phase_path,
+            )
             print("Main frame created successfully")
 
             print("Showing frame...")

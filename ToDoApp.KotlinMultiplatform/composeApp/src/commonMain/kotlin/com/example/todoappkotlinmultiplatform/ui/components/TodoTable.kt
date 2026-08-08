@@ -33,22 +33,30 @@ fun TodoTable(
     onDeselectAll: (List<Int>) -> Unit,
     onEdit: (TodoItem) -> Unit,
     onSortClick: ((String) -> Unit)? = null,
+    visibleCount: Int = PAGE_SIZE,
+    onExpandVisible: (() -> Unit)? = null,
+    onResetVisible: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    var visibleCount by remember { mutableIntStateOf(PAGE_SIZE) }
+    var localVisibleCount by remember { mutableIntStateOf(PAGE_SIZE) }
+    val effectiveVisible = if (onExpandVisible != null) visibleCount else localVisibleCount
 
     // Reset lazy window when the filtered/sorted source changes.
     LaunchedEffect(items) {
-        visibleCount = PAGE_SIZE
+        if (onResetVisible != null) {
+            onResetVisible()
+        } else {
+            localVisibleCount = PAGE_SIZE
+        }
     }
 
-    val displayItems = remember(items, visibleCount) {
-        items.take(min(visibleCount, items.size))
+    val displayItems = remember(items, effectiveVisible) {
+        items.take(min(effectiveVisible, items.size))
     }
 
     // Load more when scrolled near the end.
-    LaunchedEffect(listState, items.size) {
+    LaunchedEffect(listState, items.size, effectiveVisible) {
         snapshotFlow {
             val info = listState.layoutInfo
             val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -56,8 +64,12 @@ fun TodoTable(
             lastVisible to total
         }.collect { (lastVisible, total) ->
             if (total == 0) return@collect
-            if (lastVisible >= total - 5 && visibleCount < items.size) {
-                visibleCount = min(visibleCount + PAGE_SIZE, items.size)
+            if (lastVisible >= total - 5 && effectiveVisible < items.size) {
+                if (onExpandVisible != null) {
+                    onExpandVisible()
+                } else {
+                    localVisibleCount = min(localVisibleCount + PAGE_SIZE, items.size)
+                }
             }
         }
     }

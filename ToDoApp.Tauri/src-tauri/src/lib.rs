@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
-use tauri::{Emitter, Manager, LogicalPosition, LogicalSize};
+use tauri::{Emitter, Manager, LogicalPosition, LogicalSize, State};
 
 // Get data directory path
 fn get_data_dir(app: &tauri::AppHandle) -> PathBuf {
@@ -18,6 +19,41 @@ struct WindowBounds {
     height: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CpuBenchConfig {
+    enabled: bool,
+    phase_file: Option<String>,
+    json_path: Option<String>,
+}
+
+struct CpuBenchState(Mutex<CpuBenchConfig>);
+
+fn parse_cpu_bench_args() -> CpuBenchConfig {
+    let mut enabled = false;
+    let mut phase_file: Option<String> = None;
+    let mut json_path: Option<String> = None;
+
+    for arg in std::env::args().skip(1) {
+        if arg == "--cpu-bench" {
+            enabled = true;
+        } else if let Some(path) = arg.strip_prefix("--cpu-bench-phase=") {
+            phase_file = Some(path.to_string());
+        } else if !arg.starts_with('-') {
+            let lower = arg.to_lowercase();
+            if lower.ends_with(".json") && !lower.contains("package.json") {
+                json_path = Some(arg);
+            }
+        }
+    }
+
+    CpuBenchConfig {
+        enabled,
+        phase_file,
+        json_path,
+    }
+}
+
 #[tauri::command]
 async fn get_app_data_dir(app: tauri::AppHandle) -> Result<String, String> {
     let data_dir = get_data_dir(&app);
@@ -28,6 +64,27 @@ async fn get_app_data_dir(app: tauri::AppHandle) -> Result<String, String> {
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
+}
+
+#[tauri::command]
+fn get_cpu_bench_config(state: State<'_, CpuBenchState>) -> Result<CpuBenchConfig, String> {
+    state
+        .0
+        .lock()
+        .map(|g| g.clone())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn write_cpu_bench_phase(
+    state: State<'_, CpuBenchState>,
+    phase: String,
+) -> Result<(), String> {
+    let guard = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(path) = &guard.phase_file {
+        fs::write(path, format!("{phase}\n")).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 fn restore_window_bounds(app: &tauri::AppHandle) {
@@ -115,31 +172,82 @@ fn set_window_opacity(app: tauri::AppHandle, opacity: f64) -> Result<bool, Strin
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let cpu_bench = parse_cpu_bench_args();
+    // Always leave a breadcrumb for measure scripts when a phase file is provided.
+    if let Some(path) = &cpu_bench.phase_file {
+        let marker = if cpu_bench.enabled {
+            "boot\n"
+        } else {
+            "disabled\n"
+        };
+        let _ = fs::write(path, marker);
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .manage(CpuBenchState(Mutex::new(cpu_bench.clone())))
         .invoke_handler(tauri::generate_handler![
             get_app_data_dir,
             set_window_opacity,
-            quit_app
+            quit_app,
+            get_cpu_bench_config,
+            write_cpu_bench_phase
         ])
-        .setup(|app| {
+        .setup(move |app| {
             let _ = fs::create_dir_all(get_data_dir(app.handle()));
             restore_window_bounds(app.handle());
             // Apply ~0.95 opacity on Windows when possible
             let _ = set_window_opacity(app.handle().clone(), 0.95);
 
-            let json_paths = collect_json_paths_from_args();
-            if !json_paths.is_empty() {
-                let handle = app.handle().clone();
-                // Defer so the frontend listeners are ready
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(800));
-                    emit_open_files(&handle, json_paths);
+            // When cpu-bench owns the json import, frontend imports via get_cpu_bench_config
+            if cpu_bench.enabled {
+                if let Some(path) = &cpu_bench.phase_file {
+                    let _ = fs::write(path, "boot\n");
+                }
+                // Sidecar request file — frontend polls this (more reliable than events alone).
+                let req_path = get_data_dir(app.handle()).join("cpu_bench_request.json");
+                let req_body = serde_json::json!({
+                    "enabled": true,
+                    "phaseFile": cpu_bench.phase_file,
+                    "jsonPath": cpu_bench.json_path,
                 });
+                let _ = fs::write(&req_path, req_body.to_string());
+
+                let handle = app.handle().clone();
+                let phase_path = cpu_bench.phase_file.clone();
+                let json_path = cpu_bench.json_path.clone();
+                std::thread::spawn(move || {
+                    // Emit only — do not overwrite the phase file (frontend owns idle/add/...).
+                    for attempt in 0..6 {
+                        std::thread::sleep(std::time::Duration::from_millis(if attempt == 0 {
+                            800
+                        } else {
+                            700
+                        }));
+                        let _ = handle.emit(
+                            "cpu-bench-start",
+                            serde_json::json!({
+                                "jsonPath": json_path,
+                                "phaseFile": phase_path,
+                            }),
+                        );
+                        let _ = attempt;
+                    }
+                });
+            } else {
+                let json_paths = collect_json_paths_from_args();
+                if !json_paths.is_empty() {
+                    let handle = app.handle().clone();
+                    // Defer so the frontend listeners are ready
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(800));
+                        emit_open_files(&handle, json_paths);
+                    });
+                }
             }
             Ok(())
         })

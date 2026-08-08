@@ -44,9 +44,11 @@
     "fs:allow-write-text-file",
     "fs:allow-read-file",
     "fs:allow-write-file",
+    "fs:allow-remove",
     "fs:allow-appdata-read",
     "fs:allow-appdata-write",
     "fs:allow-appdata-write-recursive",
+    "core:path:default",
     {
       "identifier": "fs:scope",
       "allow": [

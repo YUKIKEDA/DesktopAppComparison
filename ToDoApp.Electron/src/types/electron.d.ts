@@ -22,6 +22,15 @@ export interface ElectronAPI {
   // Platform integration
   showNotification: (title: string, body: string) => Promise<void>;
   onOpenFile: (callback: (filePath: string) => void) => () => void;
+
+  // CPU bench
+  getCpuBenchConfig: () => Promise<{
+    enabled: boolean;
+    phaseFile: string | null;
+    jsonPath: string | null;
+  }>;
+  writeCpuBenchPhase: (phase: string) => Promise<void>;
+  quitApp: () => Promise<void>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

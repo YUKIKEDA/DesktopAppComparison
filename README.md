@@ -558,20 +558,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### CPU使用率（%）
 
-| Framework             | Idle | Add | Scroll | Filtering | Peak | Notes                            |
-| --------------------- | ---- | --- | ------ | --------- | ---- | -------------------------------- |
-| Avalonia              | -    | -   | -      | -         | -    | -                                |
-| Compose Multiplatform | -    | -   | -      | -         | -    | -                                |
-| Electron              | -    | -   | -      | -         | -    | -                                |
-| Flutter               | -    | -   | -      | -         | -    | -                                |
-| GPUI                  | -    | -   | -      | -         | -    | -                                |
-| MAUI                  | -    | -   | -      | -         | -    | Excluded (WinUI3 wrapper)        |
-| React Native          | -    | -   | -      | -         | -    | Excluded (insufficient info)     |
-| Tauri                 | -    | -   | -      | -         | -    | -                                |
-| WinForms              | -    | -   | -      | -         | -    | Excluded (limited UI)            |
-| WPF                   | -    | -   | -      | -         | -    | -                                |
-| WinUI3                | -    | -   | -      | -         | -    | Pending                          |
-| wxWidgets             | -    | -   | -      | -         | -    | -                                |
+| Framework             | Idle | Add  | Scroll | Filtering | Peak | Notes                            |
+| --------------------- | ---- | ---- | ------ | --------- | ---- | -------------------------------- |
+| Avalonia              | 0.5  | 8.8  | 7.4    | 8.1       | 8.8  | -                                |
+| Compose Multiplatform | 1.0  | 2.7  | 2.2    | 10.7      | 10.7 | -                                |
+| Electron              | 0.4  | 6.4  | 8.0    | 6.5       | 8.0  | -                                |
+| Flutter               | 0.1  | 12.8 | 1.6    | 13.4      | 13.4 | -                                |
+| GPUI                  | -    | -    | -      | -         | -    | Excluded (no file picker)        |
+| MAUI                  | -    | -    | -      | -         | -    | Excluded (WinUI3 wrapper)        |
+| React Native          | -    | -    | -      | -         | -    | Excluded (insufficient info)     |
+| Tauri                 | 1.0  | 4.8  | 4.9    | 3.9       | 4.9  | app + WebView2 process tree      |
+| WinForms              | -    | -    | -      | -         | -    | Excluded (limited UI)            |
+| WPF                   | 0.6  | 8.0  | 6.5    | 6.1       | 8.0  | -                                |
+| WinUI3                | 0.3  | 7.0  | 6.2    | 6.5       | 7.0  | Packaged (Appx register)         |
+| wxWidgets             | 0.2  | 4.8  | 5.8    | 5.2       | 5.8  | uv run (source)                  |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -581,6 +581,14 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Filtering: フィルタリング時
 - Peak: ピーク使用率
 - Notes: 備考
+
+**測定メモ**（2026-08-08、上記計測環境）:
+- 指標: 全論理プロセッサに対するプロセス CPU%（`TotalProcessorTime` 差分 / 経過時間 / 論理コア数 × 100）。Peak は Idle/Add/Scroll/Filtering の平均のうち最大
+- 各アプリに `--cpu-bench` を実装。フェーズファイルへ `idle` → `add` → `scroll` → `filter` → `done` を書き、外部スクリプトがフェーズ中をサンプリング（各 5 秒、3 回平均）
+- データ: `data/project_1000.json`。Add 中の都度ディスク保存はスキップ（UI/ロジック負荷を測る）
+- Electron: 同名プロセス合算。Tauri: 本体 + プロセスツリー上の WebView2。WinUI3: Appx 登録起動 + LocalState リクエストファイル。wxWidgets: `uv run python main.py`（Nuitka 再ビルド不要）。Compose: `createReleaseDistributable` の exe
+- スクリプト: `scripts/measure_cpu.ps1` / 終了後 `cleanup_local_leftovers.ps1`
+- Tauri Release は `custom-protocol` feature 必須（未設定だと cfg(dev) になり localhost を見に行く）
 
 #### 起動時間とUI応答性
 

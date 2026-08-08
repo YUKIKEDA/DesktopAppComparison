@@ -19,6 +19,8 @@ namespace ToDoApp.WinUI.ViewModels
 
         private readonly IDataService _dataService;
         private readonly DispatcherQueue _dispatcherQueue;
+
+        public DispatcherQueue DispatcherQueue => _dispatcherQueue;
         private System.Threading.Timer? _autoSaveTimer;
         private List<TodoItem> _filteredSource = new();
         private int _visibleCount = PageSize;
@@ -26,6 +28,7 @@ namespace ToDoApp.WinUI.ViewModels
         private bool _loadingMore;
         private readonly List<Window> _detailWindows = new();
         private bool _cleanedUp;
+        private bool _suspendAutoFilter;
 
         [ObservableProperty]
         private ObservableCollection<TodoItem> _items = new();
@@ -412,6 +415,11 @@ namespace ToDoApp.WinUI.ViewModels
 
         private void ApplyFilters()
         {
+            if (_suspendAutoFilter)
+            {
+                return;
+            }
+
             _ = ApplyFiltersAsync();
         }
 
@@ -500,11 +508,50 @@ namespace ToDoApp.WinUI.ViewModels
             OnPropertyChanged(nameof(AreSomeFilteredSelected));
         }
 
-        public void LoadMoreVisible()
+        public void CpuBenchAddOne(int n)
+        {
+            var maxId = Items.Count > 0 ? Items.Max(i => i.Id) : 0;
+            var now = DateTimeOffset.Now;
+            Items.Add(new TodoItem
+            {
+                Id = maxId + 1,
+                Title = $"bench-{n}",
+                Description = string.Empty,
+                Status = "未着手",
+                Priority = "中",
+                DueDate = null,
+                CreatedAt = now,
+                UpdatedAt = now,
+                IsCompleted = false
+            });
+            ApplyFiltersSync();
+            OnPropertyChanged(nameof(FilteredItems));
+        }
+
+        public void CpuBenchToggleFilters(bool active)
+        {
+            _suspendAutoFilter = true;
+#pragma warning disable MVVMTK0034
+            _searchText = active ? "a" : string.Empty;
+            _statusFilter = active ? "進行中" : string.Empty;
+#pragma warning restore MVVMTK0034
+            _suspendAutoFilter = false;
+            ApplyFiltersSync();
+            OnPropertyChanged(nameof(FilteredItems));
+            OnPropertyChanged(nameof(HasActiveFilters));
+        }
+
+        public void ResetVisibleForBench()
+        {
+            _visibleCount = PageSize;
+            RefreshVisibleItems();
+        }
+
+        public bool LoadMoreVisible()
         {
             if (_loadingMore || _visibleCount >= _filteredSource.Count)
             {
-                return;
+                return false;
             }
 
             _loadingMore = true;
@@ -519,11 +566,24 @@ namespace ToDoApp.WinUI.ViewModels
 
                 OnPropertyChanged(nameof(AreAllFilteredSelected));
                 OnPropertyChanged(nameof(AreSomeFilteredSelected));
+                return true;
             }
             finally
             {
                 _loadingMore = false;
             }
+        }
+
+        private void ApplyFiltersSync()
+        {
+            _filterGeneration++;
+            _filteredSource = ComputeFiltered(
+                Items.ToList(),
+                SearchText,
+                StatusFilter,
+                PriorityFilter);
+            _visibleCount = PageSize;
+            RefreshVisibleItems();
         }
 
         private void TriggerAutoSave()

@@ -27,3 +27,9 @@ tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-clipboard-manager = "2"
 
+# Production builds must enable custom-protocol; otherwise tauri-build sets cfg(dev)
+# and the app loads http://localhost:1420 instead of embedded dist assets.
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+

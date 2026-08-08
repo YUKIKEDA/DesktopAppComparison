@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { TodoItem, SortConfig, FilterConfig, ThemeMode } from "../types";
 
+const DEFAULT_VISIBLE_COUNT = 100;
+
 interface TodoStore {
   items: TodoItem[];
   selectedIds: Set<number>;
@@ -8,6 +10,7 @@ interface TodoStore {
   sorts: SortConfig[];
   isLoading: boolean;
   theme: ThemeMode;
+  visibleCount: number;
 
   // Actions
   setItems: (items: TodoItem[]) => void;
@@ -23,6 +26,9 @@ interface TodoStore {
   setSorts: (sorts: SortConfig[]) => void;
   setLoading: (loading: boolean) => void;
   setTheme: (theme: ThemeMode) => void;
+  setVisibleCount: (count: number) => void;
+  loadMoreVisible: (step?: number) => void;
+  resetVisibleCount: () => void;
 }
 
 export const useTodoStore = create<TodoStore>((set, get) => ({
@@ -32,6 +38,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   sorts: [],
   isLoading: false,
   theme: "light",
+  visibleCount: DEFAULT_VISIBLE_COUNT,
 
   setItems: (items) => set({ items }),
 
@@ -95,4 +102,12 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   setTheme: (theme) => set({ theme }),
+
+  setVisibleCount: (count) => set({ visibleCount: Math.max(0, count) }),
+
+  loadMoreVisible: (step = DEFAULT_VISIBLE_COUNT) => {
+    set({ visibleCount: get().visibleCount + step });
+  },
+
+  resetVisibleCount: () => set({ visibleCount: DEFAULT_VISIBLE_COUNT }),
 }));

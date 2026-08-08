@@ -49,6 +49,10 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener("app:open-file", listener);
     };
   },
+  getCpuBenchConfig: () => ipcRenderer.invoke("cpu-bench:getConfig"),
+  writeCpuBenchPhase: (phase) =>
+    ipcRenderer.invoke("cpu-bench:writePhase", phase),
+  quitApp: () => ipcRenderer.invoke("cpu-bench:quit"),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'providers/todo_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/cpu_bench.dart';
 import 'services/data_service.dart';
 import 'services/platform_integration.dart';
 import 'theme/app_theme.dart';
@@ -90,6 +92,8 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
   bool _isDialogOpen = false;
   Timer? _saveTimer;
   bool _dragging = false;
+  bool _cpuBenchRunning = false;
+  bool _cpuBenchStarted = false;
 
   @override
   void initState() {
@@ -160,6 +164,34 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
     for (final path in paths) {
       await _importFromDroppedPath(path, fromArgv: true);
     }
+    if (cpuBenchEnabled(_startupArgs) && !_cpuBenchStarted) {
+      _cpuBenchStarted = true;
+      await _runCpuBench();
+    }
+  }
+
+  Future<void> _runCpuBench() async {
+    _cpuBenchRunning = true;
+    final notifier = ref.read(todoProvider.notifier);
+    notifier.suppressSave = true;
+    _saveTimer?.cancel();
+    final phasePath = resolveCpuBenchPhasePath(_startupArgs);
+    try {
+      await runCpuBench(
+        notifier: notifier,
+        phasePath: phasePath,
+        quit: () async {
+          if (_isDesktop) {
+            await PlatformIntegration.quitApp();
+          } else {
+            exit(0);
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('CPU bench failed: $e');
+      exit(0);
+    }
   }
 
   void _setupKeyboardShortcuts() {
@@ -207,6 +239,9 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
   }
 
   void _scheduleAutoSave() {
+    if (_cpuBenchRunning || ref.read(todoProvider.notifier).suppressSave) {
+      return;
+    }
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(seconds: 2), () {
       ref.read(todoProvider.notifier).saveData();
@@ -273,6 +308,7 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
   Widget build(BuildContext context) {
     // アイテム変更を監視
     ref.listen<TodoState>(todoProvider, (previous, next) {
+      if (_cpuBenchRunning) return;
       if (previous != null &&
           previous.items.isNotEmpty &&
           next.items != previous.items) {

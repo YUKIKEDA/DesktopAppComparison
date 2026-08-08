@@ -8,7 +8,6 @@ import '../providers/todo_provider.dart';
 import '../models/todo_item.dart';
 import '../models/filter_config.dart';
 
-const int _pageSize = 100;
 const int _bgWorkThreshold = 200;
 
 /// Top-level entry for [compute] / Isolate — filter then sort.
@@ -123,7 +122,6 @@ class _TodoTableState extends ConsumerState<TodoTable> {
   String? _sortColumn;
   bool _sortAscending = true;
 
-  int _visibleCount = _pageSize;
   List<TodoItem> _processedItems = const [];
   int _processGeneration = 0;
   Object? _lastProcessKey;
@@ -160,14 +158,12 @@ class _TodoTableState extends ConsumerState<TodoTable> {
     if (pos.pixels < pos.maxScrollExtent - 240) return;
 
     final total = _processedItems.length;
-    if (_visibleCount >= total) return;
-    setState(() {
-      _visibleCount = math.min(_visibleCount + _pageSize, total);
-    });
-  }
-
-  void _resetVisibleCount() {
-    _visibleCount = _pageSize;
+    final current = ref.read(todoProvider).visibleCount;
+    if (current >= total) return;
+    ref.read(todoProvider.notifier).expandVisibleWindow(
+      kTodoPageSize,
+      totalItems: total,
+    );
   }
 
   Future<void> _scheduleProcess({
@@ -186,7 +182,7 @@ class _TodoTableState extends ConsumerState<TodoTable> {
     );
     if (key == _lastProcessKey) return;
     _lastProcessKey = key;
-    _resetVisibleCount();
+    ref.read(todoProvider.notifier).resetVisibleCount();
 
     final generation = ++_processGeneration;
 
@@ -199,7 +195,6 @@ class _TodoTableState extends ConsumerState<TodoTable> {
       if (!mounted || generation != _processGeneration) return;
       setState(() {
         _processedItems = result;
-        _visibleCount = math.min(_pageSize, result.length);
       });
       return;
     }
@@ -215,7 +210,6 @@ class _TodoTableState extends ConsumerState<TodoTable> {
     final result = maps.map(TodoItem.fromJson).toList();
     setState(() {
       _processedItems = result;
-      _visibleCount = math.min(_pageSize, result.length);
     });
   }
 
@@ -227,8 +221,8 @@ class _TodoTableState extends ConsumerState<TodoTable> {
         _sortColumn = column;
         _sortAscending = true;
       }
-      _resetVisibleCount();
     });
+    ref.read(todoProvider.notifier).resetVisibleCount();
     final state = ref.read(todoProvider);
     _scheduleProcess(
       items: state.items,
@@ -291,7 +285,7 @@ class _TodoTableState extends ConsumerState<TodoTable> {
     });
 
     final sortedItems = _processedItems;
-    final displayCount = math.min(_visibleCount, sortedItems.length);
+    final displayCount = math.min(state.visibleCount, sortedItems.length);
     final allFilteredSelected =
         sortedItems.isNotEmpty &&
         sortedItems.every((item) => state.selectedIds.contains(item.id));

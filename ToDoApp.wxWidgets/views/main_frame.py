@@ -31,7 +31,7 @@ class JsonFileDropTarget(wx.FileDropTarget):
 
 class MainFrame(wx.Frame):
     """Main application frame."""
-    def __init__(self, startup_json_paths=None):
+    def __init__(self, startup_json_paths=None, cpu_bench=False, cpu_bench_phase=None):
         print("MainFrame.__init__: Starting...")
         try:
             print("MainFrame.__init__: Creating frame...")
@@ -46,6 +46,10 @@ class MainFrame(wx.Frame):
             self._allow_close = False
             self._tray_icon = None
             self._startup_json_paths = list(startup_json_paths or [])
+            self._cpu_bench = bool(cpu_bench)
+            self._cpu_bench_phase = cpu_bench_phase
+            self._cpu_bench_active = False
+            self._cpu_bench_pending_imports = 0
             self._refresh_generation = 0
 
             print("MainFrame.__init__: Creating controller...")
@@ -98,7 +102,10 @@ class MainFrame(wx.Frame):
             self._setup_accelerators()
             print("MainFrame.__init__: Accelerators set up")
 
-            if self._startup_json_paths:
+            if self._cpu_bench:
+                # Import + bench chained from load callback
+                pass
+            elif self._startup_json_paths:
                 wx.CallAfter(self._import_startup_paths)
 
             print("MainFrame.__init__: Initialization complete")
@@ -135,10 +142,25 @@ class MainFrame(wx.Frame):
 
     def _on_import_done(self, ok: bool, err, path: str = "") -> None:
         if not ok:
+            if self._cpu_bench:
+                self._cpu_bench_pending_imports = max(
+                    0, self._cpu_bench_pending_imports - 1
+                )
+                if self._cpu_bench_pending_imports <= 0:
+                    wx.CallAfter(self._start_cpu_bench)
             return
-        self.controller.save_data_async()
-        show_notification("Todo App", "インポートしました", self)
-        self.SetStatusText(f"インポートしました: {path}" if path else "インポートしました")
+        if not self._cpu_bench_active and not self._cpu_bench:
+            self.controller.save_data_async()
+            show_notification("Todo App", "インポートしました", self)
+            self.SetStatusText(f"インポートしました: {path}" if path else "インポートしました")
+        elif self._cpu_bench and not self._cpu_bench_active:
+            # Apply import without notification; skip save for bench
+            self.SetStatusText(f"インポートしました: {path}" if path else "インポートしました")
+            self._cpu_bench_pending_imports = max(
+                0, self._cpu_bench_pending_imports - 1
+            )
+            if self._cpu_bench_pending_imports <= 0:
+                wx.CallAfter(self._start_cpu_bench)
 
     def _create_ui(self) -> None:
         """Create main UI."""
@@ -285,6 +307,8 @@ class MainFrame(wx.Frame):
                     )
                 self._refresh_table()
                 self.SetStatusText("準備完了")
+                if self._cpu_bench:
+                    wx.CallAfter(self._cpu_bench_after_load)
 
             self.controller.load_data_async(on_done=on_done)
         except Exception as e:
@@ -294,6 +318,90 @@ class MainFrame(wx.Frame):
                 self._refresh_table()
             except Exception as e2:
                 print(f"ERROR refreshing table after load failure: {e2}", file=sys.stderr)
+            if self._cpu_bench:
+                wx.CallAfter(self._cpu_bench_after_load)
+
+    def _cpu_bench_after_load(self) -> None:
+        """After project load, import argv JSON then start CPU bench."""
+        if self._startup_json_paths:
+            self._cpu_bench_pending_imports = len(self._startup_json_paths)
+            for path in self._startup_json_paths:
+                try:
+                    self.controller.import_from_path_async(
+                        path,
+                        parent=self,
+                        on_done=lambda ok, err, p=path: self._on_import_done(ok, err, p),
+                    )
+                except Exception as e:
+                    print(f"CPU bench import failed: {e}", file=sys.stderr)
+                    self._cpu_bench_pending_imports -= 1
+            if self._cpu_bench_pending_imports <= 0:
+                self._start_cpu_bench()
+        else:
+            self._start_cpu_bench()
+
+    def _start_cpu_bench(self) -> None:
+        """Begin CPU bench phases."""
+        if self._cpu_bench_active:
+            return
+        self._cpu_bench_active = True
+        try:
+            self._auto_save_timer.Stop()
+        except Exception:
+            pass
+
+        from utils.cpu_bench import run_cpu_bench, PAGE_SIZE
+
+        def add_one(n: int) -> None:
+            self.controller.add_item({
+                "title": f"bench-{n}",
+                "description": "",
+                "status": "未着手",
+                "priority": "中",
+                "dueDate": None,
+                "isCompleted": False,
+            })
+            wx.YieldIfNeeded()
+
+        def expand_or_reset() -> None:
+            if not self.table.expand_visible(PAGE_SIZE):
+                self.table.reset_visible()
+            wx.YieldIfNeeded()
+
+        def toggle_filters(on: bool) -> None:
+            self.filter_bar.set_bench_filters(on)
+            wx.YieldIfNeeded()
+
+        def on_done() -> None:
+            self._cpu_bench_finish()
+
+        run_cpu_bench(
+            phase_path=self._cpu_bench_phase,
+            add_one=add_one,
+            expand_or_reset=expand_or_reset,
+            toggle_filters=toggle_filters,
+            on_done=on_done,
+        )
+
+    def _cpu_bench_finish(self) -> None:
+        """Exit after writing done phase."""
+        self._allow_close = True
+        try:
+            if self._tray_icon:
+                self._tray_icon.RemoveIcon()
+                self._tray_icon.Destroy()
+                self._tray_icon = None
+        except Exception:
+            pass
+        try:
+            self._cleanup_resources()
+        except Exception:
+            pass
+        self.Destroy()
+        app = wx.GetApp()
+        if app:
+            app.ExitMainLoop()
+        sys.exit(0)
 
     def _on_data_changed(self) -> None:
         """Handle data change callback."""
@@ -307,10 +415,11 @@ class MainFrame(wx.Frame):
 
             self._sync_detail_frames()
 
-            # Schedule auto-save (restart timer with debounce)
-            self._auto_save_timer.Stop()
-            self._auto_save_timer.StartOnce(2000)  # 2 seconds in milliseconds
-            print("_on_data_changed: Auto-save scheduled")
+            # Schedule auto-save (restart timer with debounce) — skip for CPU bench runs
+            if not self._cpu_bench:
+                self._auto_save_timer.Stop()
+                self._auto_save_timer.StartOnce(2000)  # 2 seconds in milliseconds
+                print("_on_data_changed: Auto-save scheduled")
         except Exception as e:
             error_msg = f"データ変更コールバックエラー: {e}\n\n{traceback.format_exc()}"
             print(f"ERROR in _on_data_changed: {error_msg}", file=sys.stderr)

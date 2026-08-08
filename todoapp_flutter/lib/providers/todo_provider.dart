@@ -6,12 +6,15 @@ import '../models/filter_config.dart';
 import '../models/sort_config.dart';
 import '../services/data_service.dart';
 
+const int kTodoPageSize = 100;
+
 class TodoState {
   final List<TodoItem> items;
   final Set<int> selectedIds;
   final List<FilterConfig> filters;
   final List<SortConfig> sorts;
   final bool isLoading;
+  final int visibleCount;
 
   TodoState({
     this.items = const [],
@@ -19,6 +22,7 @@ class TodoState {
     this.filters = const [],
     this.sorts = const [],
     this.isLoading = false,
+    this.visibleCount = kTodoPageSize,
   });
 
   TodoState copyWith({
@@ -27,6 +31,7 @@ class TodoState {
     List<FilterConfig>? filters,
     List<SortConfig>? sorts,
     bool? isLoading,
+    int? visibleCount,
   }) {
     return TodoState(
       items: items ?? this.items,
@@ -34,6 +39,7 @@ class TodoState {
       filters: filters ?? this.filters,
       sorts: sorts ?? this.sorts,
       isLoading: isLoading ?? this.isLoading,
+      visibleCount: visibleCount ?? this.visibleCount,
     );
   }
 }
@@ -41,8 +47,11 @@ class TodoState {
 class TodoNotifier extends StateNotifier<TodoState> {
   TodoNotifier() : super(TodoState());
 
+  /// When true, callers should skip disk auto-save (CPU bench add phase).
+  bool suppressSave = false;
+
   void setItems(List<TodoItem> items) {
-    state = state.copyWith(items: items);
+    state = state.copyWith(items: items, visibleCount: kTodoPageSize);
   }
 
   void addItem({
@@ -69,6 +78,20 @@ class TodoNotifier extends StateNotifier<TodoState> {
       isCompleted: isCompleted,
     );
     state = state.copyWith(items: [...state.items, newItem]);
+  }
+
+  void resetVisibleCount() {
+    state = state.copyWith(visibleCount: kTodoPageSize);
+  }
+
+  /// Expand lazy window by [step]. Returns false when already at end.
+  bool expandVisibleWindow(int step, {int? totalItems}) {
+    final total = totalItems ?? state.items.length;
+    if (state.visibleCount >= total) return false;
+    final next = (state.visibleCount + step).clamp(0, total);
+    if (next == state.visibleCount) return false;
+    state = state.copyWith(visibleCount: next);
+    return true;
   }
 
   void updateItem(
@@ -127,7 +150,7 @@ class TodoNotifier extends StateNotifier<TodoState> {
   }
 
   void setFilters(List<FilterConfig> filters) {
-    state = state.copyWith(filters: filters);
+    state = state.copyWith(filters: filters, visibleCount: kTodoPageSize);
   }
 
   void setSorts(List<SortConfig> sorts) {

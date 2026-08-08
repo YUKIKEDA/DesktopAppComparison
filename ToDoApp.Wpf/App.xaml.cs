@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using ToDoApp.Wpf.Services;
@@ -30,9 +31,35 @@ namespace ToDoApp.Wpf
             mainWindow.Show();
 
             var jsonPath = e.Args.FirstOrDefault(IsJsonPath);
-            if (jsonPath != null && mainWindow.DataContext is MainWindowViewModel viewModel)
+            if (CpuBench.IsEnabled(e.Args) && mainWindow.DataContext is MainWindowViewModel benchVm)
+            {
+                var phasePath = CpuBench.ResolvePhasePath(e.Args);
+                _ = RunCpuBenchAsync(benchVm, jsonPath, phasePath);
+            }
+            else if (jsonPath != null && mainWindow.DataContext is MainWindowViewModel viewModel)
             {
                 _ = viewModel.ImportFromPathAsync(jsonPath);
+            }
+        }
+
+        private static async System.Threading.Tasks.Task RunCpuBenchAsync(
+            MainWindowViewModel viewModel,
+            string? jsonPath,
+            string phasePath)
+        {
+            try
+            {
+                if (jsonPath != null)
+                {
+                    await viewModel.ImportFromPathAsync(jsonPath);
+                }
+
+                await CpuBench.RunAsync(viewModel, phasePath);
+            }
+            finally
+            {
+                Current.Shutdown();
+                Environment.Exit(0);
             }
         }
 

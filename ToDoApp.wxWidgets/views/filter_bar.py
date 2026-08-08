@@ -134,6 +134,19 @@ class FilterBar(wx.Panel):
         )
         self.clear_btn.Enable(has_filters)
 
+    def set_bench_filters(self, enabled: bool) -> None:
+        """Toggle search/status filters for CPU bench."""
+        if enabled:
+            self.search_text.ChangeValue("bench")
+            # STATUS_OPTIONS[0] == 未着手 → combo index 1
+            self.status_combo.SetSelection(1)
+        else:
+            self.search_text.ChangeValue("")
+            self.status_combo.SetSelection(0)
+        self._update_filters()
+        self._update_clear_button()
+        wx.PostEvent(self.GetParent(), wx.CommandEvent(wx.EVT_BUTTON.typeId, -2))
+
     def get_filters(self) -> list:
         """Get current filters."""
         return self._filters

@@ -43,8 +43,19 @@ class TodoViewModel(
     private val _theme = MutableStateFlow("light")
     val theme: StateFlow<String> = _theme.asStateFlow()
 
+    private val _visibleCount = MutableStateFlow(PAGE_SIZE)
+    val visibleCount: StateFlow<Int> = _visibleCount.asStateFlow()
+
     private var saveJob: Job? = null
     private var filterJob: Job? = null
+
+    /** When true, skip debounced disk saves (CPU bench). */
+    @Volatile
+    var suppressSave: Boolean = false
+
+    companion object {
+        const val PAGE_SIZE = 100
+    }
 
     init {
         loadData()
@@ -119,7 +130,21 @@ class TodoViewModel(
             isCompleted = itemData.isCompleted
         )
         _items.update { it + newItem }
-        scheduleSave()
+        if (!suppressSave) {
+            scheduleSave()
+        }
+    }
+
+    fun resetVisibleCount() {
+        _visibleCount.value = PAGE_SIZE
+    }
+
+    /** Expand lazy window by [step]. Returns false when already at end. */
+    fun expandVisibleWindow(step: Int = PAGE_SIZE): Boolean {
+        val total = _filteredItems.value.size
+        if (_visibleCount.value >= total) return false
+        _visibleCount.value = minOf(_visibleCount.value + step, total)
+        return true
     }
 
     fun updateItem(id: Int, updates: TodoItemInput) {
@@ -140,13 +165,17 @@ class TodoViewModel(
                 }
             }
         }
-        scheduleSave()
+        if (!suppressSave) {
+            scheduleSave()
+        }
     }
 
     fun deleteItems(ids: List<Int>) {
         _items.update { it.filterNot { item -> ids.contains(item.id) } }
         _selectedIds.update { it.filterNot { id -> ids.contains(id) }.toSet() }
-        scheduleSave()
+        if (!suppressSave) {
+            scheduleSave()
+        }
     }
 
     fun toggleSelection(id: Int) {
@@ -269,7 +298,13 @@ class TodoViewModel(
         return result
     }
 
+    fun cancelPendingSave() {
+        saveJob?.cancel()
+        saveJob = null
+    }
+
     private fun scheduleSave() {
+        if (suppressSave) return
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
             delay(2000) // 2 seconds debounce
@@ -325,18 +360,22 @@ class TodoViewModel(
 
     fun importFromPath(path: String) {
         viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val result = dataService.importFromPath(path)
-                result.onSuccess { data ->
-                    applyImportedData(data)
-                    onNotify("インポートしました")
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _isLoading.value = false
+            importFromPathSuspend(path)
+        }
+    }
+
+    suspend fun importFromPathSuspend(path: String) {
+        _isLoading.value = true
+        try {
+            val result = dataService.importFromPath(path)
+            result.onSuccess { data ->
+                applyImportedData(data)
+                onNotify("インポートしました")
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            _isLoading.value = false
         }
     }
 

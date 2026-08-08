@@ -27,6 +27,7 @@ namespace ToDoApp.Avalonia.ViewModels;
         private bool _loadingMore;
         private readonly List<Window> _detailWindows = [];
         private bool _cleanedUp;
+        private bool _suspendAutoFilter;
 
     [ObservableProperty]
     private ObservableCollection<TodoItem> _items = [];
@@ -645,6 +646,11 @@ namespace ToDoApp.Avalonia.ViewModels;
 
     private void ApplyFilters()
     {
+        if (_suspendAutoFilter)
+        {
+            return;
+        }
+
         _ = ApplyFiltersAsync();
     }
 
@@ -741,11 +747,62 @@ namespace ToDoApp.Avalonia.ViewModels;
         }
     }
 
-    public void LoadMoreVisible()
+    private void ApplyFiltersSync()
+    {
+        _filterGeneration++;
+        _filteredSource = ComputeFilteredSorted(
+            Items.ToList(),
+            SearchText,
+            SelectedStatus,
+            SelectedPriority,
+            _sortColumn,
+            SortDirection);
+        _visibleCount = PageSize;
+        RefreshVisibleItems();
+        UpdateAllFilteredSelected();
+    }
+
+    public void CpuBenchAddOne(int n)
+    {
+        var maxId = Items.Count > 0 ? Items.Max(i => i.Id) : 0;
+        var now = DateTime.Now;
+        Items.Add(new TodoItem
+        {
+            Id = maxId + 1,
+            Title = $"bench-{n}",
+            Description = string.Empty,
+            Status = "未着手",
+            Priority = "中",
+            DueDate = null,
+            CreatedAt = now,
+            UpdatedAt = now,
+            IsCompleted = false
+        });
+        ApplyFiltersSync();
+    }
+
+    public void CpuBenchToggleFilters(bool active)
+    {
+        _suspendAutoFilter = true;
+#pragma warning disable MVVMTK0034
+        _searchText = active ? "a" : string.Empty;
+        _selectedStatus = active ? "進行中" : string.Empty;
+#pragma warning restore MVVMTK0034
+        _suspendAutoFilter = false;
+        ApplyFiltersSync();
+    }
+
+    public void ResetVisibleForBench()
+    {
+        _visibleCount = PageSize;
+        RefreshVisibleItems();
+    }
+
+    public bool LoadMoreVisible()
     {
         if (_loadingMore || _visibleCount >= _filteredSource.Count)
         {
-            return;
+            return false;
         }
 
         _loadingMore = true;
@@ -757,6 +814,8 @@ namespace ToDoApp.Avalonia.ViewModels;
             {
                 FilteredItems.Add(_filteredSource[i]);
             }
+
+            return true;
         }
         finally
         {

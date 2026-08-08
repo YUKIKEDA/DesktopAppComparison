@@ -32,6 +32,7 @@ fun App(
         val sorts by viewModel.sorts.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
         val filteredItems by viewModel.filteredItems.collectAsState()
+        val visibleCount by viewModel.visibleCount.collectAsState()
 
         var editingItem by remember { mutableStateOf<TodoItem?>(null) }
         var isDialogOpen by remember { mutableStateOf(false) }
@@ -139,7 +140,10 @@ fun App(
                             },
                             onSortClick = { columnId ->
                                 viewModel.toggleSort(columnId)
-                            }
+                            },
+                            visibleCount = visibleCount,
+                            onExpandVisible = { viewModel.expandVisibleWindow() },
+                            onResetVisible = { viewModel.resetVisibleCount() }
                         )
                     }
                 }
