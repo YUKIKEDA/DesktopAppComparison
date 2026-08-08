@@ -4,6 +4,7 @@ import { DataService } from "./lib/dataService";
 import { applyThemeClass } from "./lib/utils";
 import { showNotification } from "./lib/platform";
 import { runCpuBench } from "./lib/cpuBench";
+import { runUiBench } from "./lib/uiBench";
 import { Toolbar } from "./components/Toolbar";
 import { FilterBar } from "./components/FilterBar";
 import { TodoTable } from "./components/TodoTable";
@@ -61,7 +62,8 @@ function MainApp() {
   const [editingItem, setEditingItem] = useState<TodoItem | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const skipSaveRef = useRef(false);
-  const cpuBenchSkipSaveRef = useRef(false);
+  const benchSkipSaveRef = useRef(false);
+  const uiBenchStartedRef = useRef(false);
   const cpuBenchStartedRef = useRef(false);
 
   const handleEdit = (item: TodoItem | null) => {
@@ -169,7 +171,7 @@ function MainApp() {
   useEffect(() => {
     if (!window.electronAPI?.onOpenFile) return;
     return window.electronAPI.onOpenFile(async (filePath) => {
-      if (cpuBenchSkipSaveRef.current) return;
+      if (benchSkipSaveRef.current) return;
       try {
         const data = await DataService.importFromPath(filePath);
         await applyImportedData(data);
@@ -179,18 +181,44 @@ function MainApp() {
     });
   }, [applyImportedData]);
 
-  // --cpu-bench: import (if any) then idle → add → scroll → filter → done
+  // --ui-bench / --cpu-bench (mutually exclusive; ui-bench wins)
   // Do not cancel on effect cleanup — React StrictMode remount would abort the run.
   useEffect(() => {
-    if (cpuBenchStartedRef.current) return;
-    if (!window.electronAPI?.getCpuBenchConfig) return;
+    if (uiBenchStartedRef.current || cpuBenchStartedRef.current) return;
+    if (!window.electronAPI?.getUiBenchConfig) return;
 
     const start = async () => {
+      const uiConfig = await window.electronAPI.getUiBenchConfig();
+      if (uiConfig?.enabled) {
+        if (uiBenchStartedRef.current) return;
+        uiBenchStartedRef.current = true;
+        benchSkipSaveRef.current = true;
+
+        if (!uiConfig.jsonPath) {
+          console.error("UI bench missing json path");
+          return;
+        }
+
+        try {
+          await runUiBench({
+            processStartMs: uiConfig.processStartMs,
+            jsonPath: uiConfig.jsonPath,
+            writeResult: (result) =>
+              window.electronAPI.writeUiBenchResult(result),
+            quit: () => window.electronAPI.quitApp(),
+          });
+        } catch (error) {
+          console.error("UI bench failed:", error);
+        }
+        return;
+      }
+
+      if (!window.electronAPI?.getCpuBenchConfig) return;
       const config = await window.electronAPI.getCpuBenchConfig();
       if (!config?.enabled) return;
       if (cpuBenchStartedRef.current) return;
       cpuBenchStartedRef.current = true;
-      cpuBenchSkipSaveRef.current = true;
+      benchSkipSaveRef.current = true;
 
       while (useTodoStore.getState().isLoading) {
         await sleep(50);
@@ -228,7 +256,7 @@ function MainApp() {
 
   // Auto-save with debounce
   useEffect(() => {
-    if (cpuBenchSkipSaveRef.current) return;
+    if (benchSkipSaveRef.current) return;
     if (skipSaveRef.current) {
       skipSaveRef.current = false;
       return;

@@ -30,6 +30,20 @@ export interface ElectronAPI {
     jsonPath: string | null;
   }>;
   writeCpuBenchPhase: (phase: string) => Promise<void>;
+
+  // UI bench
+  getUiBenchConfig: () => Promise<{
+    enabled: boolean;
+    outFile: string | null;
+    jsonPath: string | null;
+    processStartMs: number;
+  }>;
+  writeUiBenchResult: (result: {
+    startup_s: number;
+    render_1000_s: number;
+    scroll_fps: number;
+    filter_response_ms: number;
+  }) => Promise<void>;
   quitApp: () => Promise<void>;
 }
 

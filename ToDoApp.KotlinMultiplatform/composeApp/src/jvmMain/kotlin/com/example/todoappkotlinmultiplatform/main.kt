@@ -12,6 +12,7 @@ import com.example.todoappkotlinmultiplatform.service.DataService
 import com.example.todoappkotlinmultiplatform.service.WindowGeometry
 import com.example.todoappkotlinmultiplatform.viewmodel.TodoViewModel
 import java.awt.datatransfer.DataFlavor
+import kotlinx.coroutines.delay
 import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
 import java.awt.dnd.DropTargetDropEvent
@@ -83,12 +84,41 @@ fun main(args: Array<String>) = application {
         }
     }
 
-    // File association (argv) + optional --cpu-bench
+    // File association (argv) + optional --cpu-bench / --ui-bench
     LaunchedEffect(Unit) {
         val jsonFiles = args
             .filter { it.endsWith(".json", ignoreCase = true) }
             .map { File(it) }
             .filter { it.isFile }
+
+        if (uiBenchEnabled(args)) {
+            viewModel.suppressSave = true
+            viewModel.cancelPendingSave()
+
+            var waited = 0
+            while (viewModel.isLoading.value && waited < 200) {
+                delay(16)
+                waited++
+            }
+            // Avoid withFrameNanos here — it can hang before the window is composing.
+            delay(32)
+            val startupS = processStartupSeconds()
+
+            val jsonPath = resolveUiBenchJsonPath(args)
+            val outPath = resolveUiBenchOutPath(args)
+            try {
+                if (jsonPath != null) {
+                    runUiBench(viewModel, outPath, jsonPath, startupS)
+                } else {
+                    System.err.println("UI bench: missing project JSON path")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            exitApp()
+            exitProcess(0)
+            return@LaunchedEffect
+        }
 
         for (file in jsonFiles) {
             viewModel.importFromPathSuspend(file.absolutePath)

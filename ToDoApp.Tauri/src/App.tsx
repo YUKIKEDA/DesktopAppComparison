@@ -65,7 +65,6 @@ function MainApp() {
   const [editingItem, setEditingItem] = useState<TodoItem | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const skipSaveRef = useRef(false);
-  const cpuBenchSkipSaveRef = useRef(false);
   const opacityAppliedRef = useRef(false);
 
   const handleEdit = (item: TodoItem | null) => {
@@ -239,7 +238,11 @@ function MainApp() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void listen<string>("open-file", async (event) => {
-      if (cpuBenchSkipSaveRef.current) return;
+      const w = window as unknown as {
+        __cpuBenchActive?: boolean;
+        __uiBenchActive?: boolean;
+      };
+      if (w.__cpuBenchActive || w.__uiBenchActive) return;
       const filePath = event.payload;
       if (!filePath || typeof filePath !== "string") return;
       try {
@@ -277,10 +280,13 @@ function MainApp() {
 
   // Auto-save with debounce
   useEffect(() => {
-    if ((window as unknown as { __cpuBenchActive?: boolean }).__cpuBenchActive) {
+    const w = window as unknown as {
+      __cpuBenchActive?: boolean;
+      __uiBenchActive?: boolean;
+    };
+    if (w.__cpuBenchActive || w.__uiBenchActive) {
       return;
     }
-    if (cpuBenchSkipSaveRef.current) return;
     if (skipSaveRef.current) {
       skipSaveRef.current = false;
       return;

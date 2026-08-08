@@ -725,6 +725,17 @@ namespace ToDoApp.Wpf.ViewModels
             ApplyFiltersSync();
         }
 
+        public async Task UiBenchToggleFiltersAsync(bool active)
+        {
+            _suspendAutoFilter = true;
+#pragma warning disable MVVMTK0034
+            _searchText = active ? "a" : string.Empty;
+            _selectedStatus = active ? "進行中" : string.Empty;
+#pragma warning restore MVVMTK0034
+            _suspendAutoFilter = false;
+            await ApplyFiltersAsync();
+        }
+
         public void ResetVisibleForBench()
         {
             _visibleCount = PageSize;

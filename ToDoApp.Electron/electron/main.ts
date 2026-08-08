@@ -17,6 +17,8 @@ import type { ProjectData, ThemeData, TodoItem } from "../src/types/index";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const processStartMs = Date.now() - process.uptime() * 1000;
+
 // Data directory
 const DATA_DIR = path.join(app.getPath("userData"), "data");
 const DATA_FILE = path.join(DATA_DIR, "project.json");
@@ -61,6 +63,20 @@ interface CpuBenchConfig {
   jsonPath: string | null;
 }
 
+interface UiBenchConfig {
+  enabled: boolean;
+  outFile: string | null;
+  jsonPath: string | null;
+  processStartMs: number;
+}
+
+interface UiBenchResult {
+  startup_s: number;
+  render_1000_s: number;
+  scroll_fps: number;
+  filter_response_ms: number;
+}
+
 function parseCpuBenchArgs(argv: string[]): CpuBenchConfig {
   let enabled = false;
   let phaseFile: string | null = null;
@@ -79,10 +95,36 @@ function parseCpuBenchArgs(argv: string[]): CpuBenchConfig {
   };
 }
 
+function parseUiBenchArgs(argv: string[]): UiBenchConfig {
+  let enabled = false;
+  let outFile: string | null = null;
+  for (const arg of argv) {
+    if (!arg) continue;
+    if (arg === "--ui-bench") {
+      enabled = true;
+    } else if (arg.startsWith("--ui-bench-out=")) {
+      outFile = arg.slice("--ui-bench-out=".length);
+    }
+  }
+  return {
+    enabled,
+    outFile,
+    jsonPath: findJsonFromArgv(argv),
+    processStartMs,
+  };
+}
+
 let cpuBenchConfig: CpuBenchConfig = {
   enabled: false,
   phaseFile: null,
   jsonPath: null,
+};
+
+let uiBenchConfig: UiBenchConfig = {
+  enabled: false,
+  outFile: null,
+  jsonPath: null,
+  processStartMs,
 };
 
 function parseProjectData(content: string): ProjectData {
@@ -463,6 +505,23 @@ async function setupIpcHandlers() {
     isQuitting = true;
     app.quit();
   });
+
+  // UI bench
+  ipcMain.handle("ui-bench:getConfig", async (): Promise<UiBenchConfig> => {
+    return uiBenchConfig;
+  });
+
+  ipcMain.handle(
+    "ui-bench:writeResult",
+    async (_event, result: UiBenchResult): Promise<void> => {
+      if (!uiBenchConfig.outFile || !result || typeof result !== "object") return;
+      await fs.writeFile(
+        uiBenchConfig.outFile,
+        JSON.stringify(result),
+        "utf-8"
+      );
+    }
+  );
 }
 
 async function createWindow() {
@@ -554,11 +613,12 @@ if (!gotTheLock) {
       app.setAppUserModelId("com.yuuuu.todoapp-electron");
     }
     cpuBenchConfig = parseCpuBenchArgs(process.argv);
+    uiBenchConfig = parseUiBenchArgs(process.argv);
     setupIpcHandlers();
     createTray();
     void createWindow().then(() => {
-      // When cpu-bench owns the json import path, renderer imports via getCpuBenchConfig
-      if (cpuBenchConfig.enabled) return;
+      // When bench mode owns the json import path, renderer imports via get*BenchConfig
+      if (cpuBenchConfig.enabled || uiBenchConfig.enabled) return;
       const jsonPath = findJsonFromArgv(process.argv);
       if (jsonPath) {
         sendOpenFile(jsonPath);

@@ -2,8 +2,34 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
+#include <cstdint>
+#include <string>
+#include <vector>
+
 #include "flutter_window.h"
 #include "utils.h"
+
+namespace {
+
+// FILETIME (100ns since 1601-01-01) to Unix epoch milliseconds.
+uint64_t FileTimeToUnixMs(const FILETIME& ft) {
+  ULARGE_INTEGER uli;
+  uli.LowPart = ft.dwLowDateTime;
+  uli.HighPart = ft.dwHighDateTime;
+  constexpr uint64_t kEpochDiff = 116444736000000000ULL;
+  return (uli.QuadPart - kEpochDiff) / 10000ULL;
+}
+
+uint64_t CurrentProcessStartUnixMs() {
+  FILETIME creation{}, exit_time{}, kernel{}, user{};
+  if (!::GetProcessTimes(::GetCurrentProcess(), &creation, &exit_time, &kernel,
+                         &user)) {
+    return 0;
+  }
+  return FileTimeToUnixMs(creation);
+}
+
+}  // namespace
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
@@ -21,6 +47,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
+
+  // OS process creation time for fair --ui-bench startup (includes engine boot).
+  const uint64_t process_start_ms = CurrentProcessStartUnixMs();
+  if (process_start_ms > 0) {
+    command_line_arguments.insert(
+        command_line_arguments.begin(),
+        std::string("--process-start-ms=") + std::to_string(process_start_ms));
+  }
 
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 

@@ -36,6 +36,11 @@ namespace ToDoApp.Wpf
                 var phasePath = CpuBench.ResolvePhasePath(e.Args);
                 _ = RunCpuBenchAsync(benchVm, jsonPath, phasePath);
             }
+            else if (UiBench.IsEnabled(e.Args) && mainWindow.DataContext is MainWindowViewModel uiBenchVm)
+            {
+                var outPath = UiBench.ResolveOutPath(e.Args);
+                _ = RunUiBenchAsync(uiBenchVm, jsonPath, outPath);
+            }
             else if (jsonPath != null && mainWindow.DataContext is MainWindowViewModel viewModel)
             {
                 _ = viewModel.ImportFromPathAsync(jsonPath);
@@ -55,6 +60,27 @@ namespace ToDoApp.Wpf
                 }
 
                 await CpuBench.RunAsync(viewModel, phasePath);
+            }
+            finally
+            {
+                Current.Shutdown();
+                Environment.Exit(0);
+            }
+        }
+
+        private static async System.Threading.Tasks.Task RunUiBenchAsync(
+            MainWindowViewModel viewModel,
+            string? jsonPath,
+            string outPath)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(jsonPath))
+                {
+                    throw new InvalidOperationException("ui-bench requires a .json data path argument.");
+                }
+
+                await UiBench.RunAsync(viewModel, jsonPath, outPath);
             }
             finally
             {

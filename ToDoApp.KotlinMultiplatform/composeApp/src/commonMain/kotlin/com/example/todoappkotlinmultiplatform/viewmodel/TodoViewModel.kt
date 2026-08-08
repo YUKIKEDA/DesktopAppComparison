@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -202,6 +203,12 @@ class TodoViewModel(
 
     fun setFilters(filters: List<FilterConfig>) {
         _filters.value = filters
+        _visibleCount.value = PAGE_SIZE
+    }
+
+    suspend fun awaitFiltersApplied() {
+        yield()
+        filterJob?.join()
     }
 
     fun setSorts(sorts: List<SortConfig>) {
@@ -388,7 +395,10 @@ class TodoViewModel(
     private fun applyImportedData(data: ProjectData) {
         _items.value = data.items
         _selectedIds.value = emptySet()
-        saveData(notify = false)
+        _visibleCount.value = PAGE_SIZE
+        if (!suppressSave) {
+            saveData(notify = false)
+        }
     }
 
     fun getItemById(id: Int): TodoItem? = _items.value.find { it.id == id }

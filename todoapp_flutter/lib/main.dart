@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import 'providers/todo_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/cpu_bench.dart';
+import 'services/ui_bench.dart';
 import 'services/data_service.dart';
 import 'services/platform_integration.dart';
 import 'theme/app_theme.dart';
@@ -24,8 +25,10 @@ import 'models/todo_item.dart';
 bool get _isDesktop => isDesktopPlatform;
 
 List<String> _startupArgs = const [];
+DateTime? _mainStartTime;
 
 Future<void> main(List<String> args) async {
+  _mainStartTime = DateTime.now();
   WidgetsFlutterBinding.ensureInitialized();
   _startupArgs = args;
 
@@ -94,6 +97,8 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
   bool _dragging = false;
   bool _cpuBenchRunning = false;
   bool _cpuBenchStarted = false;
+  bool _uiBenchRunning = false;
+  bool _uiBenchStarted = false;
 
   @override
   void initState() {
@@ -160,13 +165,58 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
 
   Future<void> _loadData() async {
     await ref.read(todoProvider.notifier).loadData();
-    final paths = PlatformIntegration.jsonPathsFromArgs(_startupArgs);
-    for (final path in paths) {
-      await _importFromDroppedPath(path, fromArgv: true);
+    // ui-bench imports JSON itself after measuring startup; cpu-bench needs it preloaded.
+    if (!uiBenchEnabled(_startupArgs)) {
+      final paths = PlatformIntegration.jsonPathsFromArgs(_startupArgs);
+      for (final path in paths) {
+        await _importFromDroppedPath(path, fromArgv: true);
+      }
     }
-    if (cpuBenchEnabled(_startupArgs) && !_cpuBenchStarted) {
+    if (uiBenchEnabled(_startupArgs) && !_uiBenchStarted) {
+      _uiBenchStarted = true;
+      await _runUiBench();
+    } else if (cpuBenchEnabled(_startupArgs) && !_cpuBenchStarted) {
       _cpuBenchStarted = true;
       await _runCpuBench();
+    }
+  }
+
+  Future<void> _runUiBench() async {
+    _uiBenchRunning = true;
+    final notifier = ref.read(todoProvider.notifier);
+    notifier.suppressSave = true;
+    _saveTimer?.cancel();
+
+    await endOfFrame();
+    final startupS = measureStartupSeconds(
+      args: _startupArgs,
+      fallbackStart: _mainStartTime,
+    );
+
+    final jsonPath = resolveUiBenchJsonPath(_startupArgs);
+    if (jsonPath == null) {
+      debugPrint('UI bench: missing project JSON path');
+      exit(0);
+    }
+    final outPath = resolveUiBenchOutPath(_startupArgs);
+
+    try {
+      await runUiBench(
+        notifier: notifier,
+        outPath: outPath,
+        jsonPath: jsonPath,
+        startupS: startupS,
+        quit: () async {
+          if (_isDesktop) {
+            await PlatformIntegration.quitApp();
+          } else {
+            exit(0);
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('UI bench failed: $e');
+      exit(0);
     }
   }
 
@@ -239,7 +289,9 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
   }
 
   void _scheduleAutoSave() {
-    if (_cpuBenchRunning || ref.read(todoProvider.notifier).suppressSave) {
+    if (_cpuBenchRunning ||
+        _uiBenchRunning ||
+        ref.read(todoProvider.notifier).suppressSave) {
       return;
     }
     _saveTimer?.cancel();
@@ -308,7 +360,7 @@ class _TodoAppPageState extends ConsumerState<TodoAppPage> with WindowListener {
   Widget build(BuildContext context) {
     // アイテム変更を監視
     ref.listen<TodoState>(todoProvider, (previous, next) {
-      if (_cpuBenchRunning) return;
+      if (_cpuBenchRunning || _uiBenchRunning) return;
       if (previous != null &&
           previous.items.isNotEmpty &&
           next.items != previous.items) {

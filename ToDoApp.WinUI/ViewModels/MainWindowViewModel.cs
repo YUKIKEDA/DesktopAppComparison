@@ -207,15 +207,57 @@ namespace ToDoApp.WinUI.ViewModels
 
         private async Task ApplyImportedDataAsync(ProjectData data)
         {
-            Items.Clear();
-            foreach (var item in data.Items)
+            await RunOnUiAsync(() =>
             {
-                Items.Add(item);
+                Items.Clear();
+                foreach (var item in data.Items)
+                {
+                    Items.Add(item);
+                }
+
+                SelectedIds.Clear();
+            }).ConfigureAwait(false);
+
+            // Wait until filtered list is applied (do not fire-and-forget).
+            await ApplyFiltersAsync().ConfigureAwait(false);
+
+            if (!SuppressSave)
+            {
+                await SaveDataInternalAsync(setLoading: true, notify: false);
             }
-            SelectedIds.Clear();
-            ApplyFilters();
-            await SaveDataInternalAsync(setLoading: true, notify: false);
-            NotificationService.Show("Todo App", "インポートしました");
+
+            if (!SuppressSave)
+            {
+                NotificationService.Show("Todo App", "インポートしました");
+            }
+        }
+
+        private Task RunOnUiAsync(Action action)
+        {
+            if (_dispatcherQueue.HasThreadAccess)
+            {
+                action();
+                return Task.CompletedTask;
+            }
+
+            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!_dispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        action();
+                        tcs.TrySetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.TrySetException(ex);
+                    }
+                }))
+            {
+                tcs.TrySetException(new InvalidOperationException("Failed to enqueue UI work."));
+            }
+
+            return tcs.Task;
         }
 
         [RelayCommand(CanExecute = nameof(CanCopySelected))]
@@ -442,26 +484,36 @@ namespace ToDoApp.WinUI.ViewModels
                 return;
             }
 
+            var applied = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             void ApplyOnUi()
             {
-                if (generation != _filterGeneration)
+                try
                 {
-                    return;
-                }
+                    if (generation == _filterGeneration)
+                    {
+                        _filteredSource = result;
+                        _visibleCount = PageSize;
+                        RefreshVisibleItems();
+                    }
 
-                _filteredSource = result;
-                _visibleCount = PageSize;
-                RefreshVisibleItems();
+                    applied.TrySetResult();
+                }
+                catch (Exception ex)
+                {
+                    applied.TrySetException(ex);
+                }
             }
 
             if (_dispatcherQueue.HasThreadAccess)
             {
                 ApplyOnUi();
             }
-            else
+            else if (!_dispatcherQueue.TryEnqueue(ApplyOnUi))
             {
-                _dispatcherQueue.TryEnqueue(ApplyOnUi);
+                applied.TrySetResult();
             }
+
+            await applied.Task.ConfigureAwait(false);
         }
 
         private static List<TodoItem> ComputeFiltered(
@@ -539,6 +591,40 @@ namespace ToDoApp.WinUI.ViewModels
             ApplyFiltersSync();
             OnPropertyChanged(nameof(FilteredItems));
             OnPropertyChanged(nameof(HasActiveFilters));
+        }
+
+        public bool SuppressSave { get; set; }
+
+        public async Task UiBenchToggleFiltersAsync(bool active)
+        {
+            var propsSet = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!_dispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        _suspendAutoFilter = true;
+#pragma warning disable MVVMTK0034
+                        _searchText = active ? "a" : string.Empty;
+                        _statusFilter = active ? "進行中" : string.Empty;
+#pragma warning restore MVVMTK0034
+                        _suspendAutoFilter = false;
+                        OnPropertyChanged(nameof(SearchText));
+                        OnPropertyChanged(nameof(StatusFilter));
+                        OnPropertyChanged(nameof(HasActiveFilters));
+                        propsSet.TrySetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        propsSet.TrySetException(ex);
+                    }
+                }))
+            {
+                propsSet.TrySetResult();
+            }
+
+            await propsSet.Task.ConfigureAwait(false);
+            // Same path as normal UI filtering: background compute + UI apply.
+            await ApplyFiltersAsync().ConfigureAwait(false);
         }
 
         public void ResetVisibleForBench()

@@ -27,7 +27,72 @@ struct CpuBenchConfig {
     json_path: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UiBenchConfig {
+    enabled: bool,
+    out_file: Option<String>,
+    json_path: Option<String>,
+    process_start_ms: u64,
+}
+
 struct CpuBenchState(Mutex<CpuBenchConfig>);
+struct UiBenchState(Mutex<UiBenchConfig>);
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
+/// OS process creation time (Unix ms). Falls back to "now" if unavailable.
+fn process_creation_ms() -> u64 {
+    #[cfg(windows)]
+    {
+        use std::mem::MaybeUninit;
+        #[repr(C)]
+        struct FileTime {
+            dw_low_date_time: u32,
+            dw_high_date_time: u32,
+        }
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn GetCurrentProcess() -> isize;
+            fn GetProcessTimes(
+                process: isize,
+                creation: *mut FileTime,
+                exit: *mut FileTime,
+                kernel: *mut FileTime,
+                user: *mut FileTime,
+            ) -> i32;
+        }
+        unsafe {
+            let mut creation = MaybeUninit::<FileTime>::uninit();
+            let mut exit = MaybeUninit::<FileTime>::uninit();
+            let mut kernel = MaybeUninit::<FileTime>::uninit();
+            let mut user = MaybeUninit::<FileTime>::uninit();
+            if GetProcessTimes(
+                GetCurrentProcess(),
+                creation.as_mut_ptr(),
+                exit.as_mut_ptr(),
+                kernel.as_mut_ptr(),
+                user.as_mut_ptr(),
+            ) != 0
+            {
+                let ft = creation.assume_init();
+                let ticks =
+                    ((ft.dw_high_date_time as u64) << 32) | (ft.dw_low_date_time as u64);
+                // FILETIME → Unix ms
+                const EPOCH_DIFF: u64 = 116444736000000000;
+                if ticks > EPOCH_DIFF {
+                    return (ticks - EPOCH_DIFF) / 10_000;
+                }
+            }
+        }
+    }
+    now_ms()
+}
 
 fn parse_cpu_bench_args() -> CpuBenchConfig {
     let mut enabled = false;
@@ -51,6 +116,32 @@ fn parse_cpu_bench_args() -> CpuBenchConfig {
         enabled,
         phase_file,
         json_path,
+    }
+}
+
+fn parse_ui_bench_args(process_start_ms: u64) -> UiBenchConfig {
+    let mut enabled = false;
+    let mut out_file: Option<String> = None;
+    let mut json_path: Option<String> = None;
+
+    for arg in std::env::args().skip(1) {
+        if arg == "--ui-bench" {
+            enabled = true;
+        } else if let Some(path) = arg.strip_prefix("--ui-bench-out=") {
+            out_file = Some(path.to_string());
+        } else if !arg.starts_with('-') {
+            let lower = arg.to_lowercase();
+            if lower.ends_with(".json") && !lower.contains("package.json") {
+                json_path = Some(arg);
+            }
+        }
+    }
+
+    UiBenchConfig {
+        enabled,
+        out_file,
+        json_path,
+        process_start_ms,
     }
 }
 
@@ -83,6 +174,27 @@ fn write_cpu_bench_phase(
     let guard = state.0.lock().map_err(|e| e.to_string())?;
     if let Some(path) = &guard.phase_file {
         fs::write(path, format!("{phase}\n")).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn get_ui_bench_config(state: State<'_, UiBenchState>) -> Result<UiBenchConfig, String> {
+    state
+        .0
+        .lock()
+        .map(|g| g.clone())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn write_ui_bench_result(
+    state: State<'_, UiBenchState>,
+    result: serde_json::Value,
+) -> Result<(), String> {
+    let guard = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(path) = &guard.out_file {
+        fs::write(path, result.to_string()).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -172,7 +284,9 @@ fn set_window_opacity(app: tauri::AppHandle, opacity: f64) -> Result<bool, Strin
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let process_start_ms = process_creation_ms();
     let cpu_bench = parse_cpu_bench_args();
+    let ui_bench = parse_ui_bench_args(process_start_ms);
     // Always leave a breadcrumb for measure scripts when a phase file is provided.
     if let Some(path) = &cpu_bench.phase_file {
         let marker = if cpu_bench.enabled {
@@ -190,12 +304,15 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(CpuBenchState(Mutex::new(cpu_bench.clone())))
+        .manage(UiBenchState(Mutex::new(ui_bench.clone())))
         .invoke_handler(tauri::generate_handler![
             get_app_data_dir,
             set_window_opacity,
             quit_app,
             get_cpu_bench_config,
-            write_cpu_bench_phase
+            write_cpu_bench_phase,
+            get_ui_bench_config,
+            write_ui_bench_result
         ])
         .setup(move |app| {
             let _ = fs::create_dir_all(get_data_dir(app.handle()));
@@ -203,8 +320,39 @@ pub fn run() {
             // Apply ~0.95 opacity on Windows when possible
             let _ = set_window_opacity(app.handle().clone(), 0.95);
 
-            // When cpu-bench owns the json import, frontend imports via get_cpu_bench_config
-            if cpu_bench.enabled {
+            if ui_bench.enabled {
+                let req_path = get_data_dir(app.handle()).join("ui_bench_request.json");
+                let req_body = serde_json::json!({
+                    "enabled": true,
+                    "outFile": ui_bench.out_file,
+                    "jsonPath": ui_bench.json_path,
+                    "processStartMs": ui_bench.process_start_ms,
+                });
+                let _ = fs::write(&req_path, req_body.to_string());
+
+                let handle = app.handle().clone();
+                let out_file = ui_bench.out_file.clone();
+                let json_path = ui_bench.json_path.clone();
+                let process_start_ms = ui_bench.process_start_ms;
+                std::thread::spawn(move || {
+                    for attempt in 0..6 {
+                        std::thread::sleep(std::time::Duration::from_millis(if attempt == 0 {
+                            800
+                        } else {
+                            700
+                        }));
+                        let _ = handle.emit(
+                            "ui-bench-start",
+                            serde_json::json!({
+                                "outFile": out_file,
+                                "jsonPath": json_path,
+                                "processStartMs": process_start_ms,
+                            }),
+                        );
+                        let _ = attempt;
+                    }
+                });
+            } else if cpu_bench.enabled {
                 if let Some(path) = &cpu_bench.phase_file {
                     let _ = fs::write(path, "boot\n");
                 }

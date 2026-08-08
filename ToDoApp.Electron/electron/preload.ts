@@ -52,6 +52,9 @@ const electronAPI: ElectronAPI = {
   getCpuBenchConfig: () => ipcRenderer.invoke("cpu-bench:getConfig"),
   writeCpuBenchPhase: (phase) =>
     ipcRenderer.invoke("cpu-bench:writePhase", phase),
+  getUiBenchConfig: () => ipcRenderer.invoke("ui-bench:getConfig"),
+  writeUiBenchResult: (result) =>
+    ipcRenderer.invoke("ui-bench:writeResult", result),
   quitApp: () => ipcRenderer.invoke("cpu-bench:quit"),
 };
 

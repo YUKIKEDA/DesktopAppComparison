@@ -52,6 +52,11 @@ public partial class App : Application
                 var phasePath = CpuBench.ResolvePhasePath(args);
                 _ = RunCpuBenchAsync(benchVm, jsonPath, phasePath);
             }
+            else if (UiBench.IsEnabled(args) && _mainWindow.DataContext is MainWindowViewModel uiBenchVm)
+            {
+                var outPath = UiBench.ResolveOutPath(args);
+                _ = RunUiBenchAsync(uiBenchVm, jsonPath, outPath);
+            }
             else if (jsonPath != null && _mainWindow.DataContext is MainWindowViewModel viewModel)
             {
                 _ = viewModel.ImportFromPathAsync(jsonPath);
@@ -79,6 +84,56 @@ public partial class App : Application
         catch (Exception ex)
         {
             try { CpuBench.SetPhase(phasePath, "error"); } catch { }
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
+        finally
+        {
+            try { RequestExit(); } catch { }
+            Environment.Exit(0);
+        }
+    }
+
+    private async System.Threading.Tasks.Task RunUiBenchAsync(
+        MainWindowViewModel viewModel,
+        string? jsonPath,
+        string outPath)
+    {
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (_mainWindow == null)
+                {
+                    return;
+                }
+
+                if (!_mainWindow.IsVisible)
+                {
+                    _mainWindow.Show();
+                }
+
+                if (_mainWindow.WindowState == WindowState.Minimized)
+                {
+                    _mainWindow.WindowState = WindowState.Normal;
+                }
+
+                _mainWindow.Activate();
+            });
+
+            if (string.IsNullOrWhiteSpace(jsonPath))
+            {
+                throw new InvalidOperationException("ui-bench requires a .json data path argument.");
+            }
+
+            if (_mainWindow == null)
+            {
+                throw new InvalidOperationException("Main window is unavailable for ui-bench.");
+            }
+
+            await UiBench.RunAsync(viewModel, _mainWindow, jsonPath, outPath);
+        }
+        catch (Exception ex)
+        {
             System.Diagnostics.Debug.WriteLine(ex);
         }
         finally

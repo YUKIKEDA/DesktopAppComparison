@@ -18,6 +18,8 @@ function sleep(ms: number): Promise<void> {
 
 async function runBench(jsonPath?: string | null, phaseFile?: string | null) {
   if (started) return;
+  const w = window as unknown as { __uiBenchActive?: boolean };
+  if (w.__uiBenchActive) return;
   started = true;
   (window as unknown as { __cpuBenchActive?: boolean }).__cpuBenchActive = true;
 

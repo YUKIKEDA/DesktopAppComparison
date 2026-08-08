@@ -2,6 +2,7 @@
 import wx
 import sys
 import os
+import time
 import traceback
 
 # Add project root to path
@@ -26,6 +27,7 @@ def show_error(title: str, message: str):
 try:
     from views.main_frame import MainFrame
     from utils.cpu_bench import parse_cpu_bench_args
+    from utils.ui_bench import parse_ui_bench_args
 except Exception as e:
     show_error("インポートエラー", f"MainFrameのインポートに失敗しました:\n{str(e)}\n\n{traceback.format_exc()}")
     sys.exit(1)
@@ -53,11 +55,19 @@ class TodoApp(wx.App):
 
             json_paths = _json_paths_from_argv(sys.argv)
             cpu_bench, phase_path = parse_cpu_bench_args(sys.argv)
+            ui_bench, ui_out_path, ui_json_path = parse_ui_bench_args(sys.argv)
+            if ui_bench:
+                cpu_bench = False
+            process_start = getattr(self, "process_start_monotonic", time.monotonic())
             print("Creating main frame...")
             frame = MainFrame(
                 startup_json_paths=json_paths,
                 cpu_bench=cpu_bench,
                 cpu_bench_phase=phase_path,
+                ui_bench=ui_bench,
+                ui_bench_out=ui_out_path,
+                ui_bench_json=ui_json_path,
+                process_start_monotonic=process_start,
             )
             print("Main frame created successfully")
 
@@ -75,9 +85,11 @@ class TodoApp(wx.App):
 
 def main():
     """Main entry point."""
+    process_start = time.monotonic()
     print("Starting application...")
     try:
         app = TodoApp()
+        app.process_start_monotonic = process_start
         print("App created, starting main loop...")
         app.MainLoop()
     except Exception as e:

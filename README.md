@@ -382,20 +382,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### UI機能
 
-| Framework             | Theme switch | Dark mode | Custom style | Animation | Responsive layout | Notes                                 |
-| --------------------- | ------------ | --------- | ------------ | --------- | ----------------- | ------------------------------------- |
-| Avalonia              | Y            | Y         | Y            | Y         | Y                 |                                       |
-| Compose Multiplatform | Y            | Y         | Y            | Y         | Y                 |                                       |
-| Electron              | Y            | Y         | Y            | Y         | Y                 |                                       |
-| Flutter               | Y            | Y         | Y            | Y         | Y                 |                                       |
-| GPUI                  | -            | -         | -            | -         | -                 | Excluded (no file picker)             |
-| MAUI                  | -            | -         | -            | -         | -                 | Excluded (WinUI3 wrapper)             |
-| React Native          | -            | -         | -            | -         | -                 | Excluded (insufficient info)          |
-| Tauri                 | Y            | Y         | Y            | Y         | Y                 |                                       |
-| WinForms              | -            | -         | -            | -         | -                 | Excluded (limited UI)                 |
-| WPF                   | Y            | Y         | Y            | Y         | Y                 |                                       |
-| WinUI3                | Y            | Y         | Y            | Y         | Y                 | App RequestedTheme (not system-only)  |
-| wxWidgets             | Y            | Y         | Y            | P         | Y                 | FW: limited UI animation on wxPython  |
+| Framework             | Theme switch | Dark mode | Custom style | Animation | Responsive layout | Notes                                |
+| --------------------- | ------------ | --------- | ------------ | --------- | ----------------- | ------------------------------------ |
+| Avalonia              | Y            | Y         | Y            | Y         | Y                 |                                      |
+| Compose Multiplatform | Y            | Y         | Y            | Y         | Y                 |                                      |
+| Electron              | Y            | Y         | Y            | Y         | Y                 |                                      |
+| Flutter               | Y            | Y         | Y            | Y         | Y                 |                                      |
+| GPUI                  | -            | -         | -            | -         | -                 | Excluded (no file picker)            |
+| MAUI                  | -            | -         | -            | -         | -                 | Excluded (WinUI3 wrapper)            |
+| React Native          | -            | -         | -            | -         | -                 | Excluded (insufficient info)         |
+| Tauri                 | Y            | Y         | Y            | Y         | Y                 |                                      |
+| WinForms              | -            | -         | -            | -         | -                 | Excluded (limited UI)                |
+| WPF                   | Y            | Y         | Y            | Y         | Y                 |                                      |
+| WinUI3                | Y            | Y         | Y            | Y         | Y                 | App RequestedTheme (not system-only) |
+| wxWidgets             | Y            | Y         | Y            | P         | Y                 | FW: limited UI animation on wxPython |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -417,20 +417,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### プラットフォーム統合機能
 
-| Framework             | Notification | System tray | File association | Native dialog | Clipboard | Notes                                              |
-| --------------------- | ------------ | ----------- | ---------------- | ------------- | --------- | -------------------------------------------------- |
-| Avalonia              | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
-| Compose Multiplatform | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
-| Electron              | Y            | Y           | Y                | Y             | Y         | fileAssociations + open-file / second-instance     |
-| Flutter               | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
-| GPUI                  | -            | -           | -                | -             | -         | Excluded (no file picker)                          |
-| MAUI                  | -            | -           | -                | -             | -         | Excluded (WinUI3 wrapper)                          |
-| React Native          | -            | -           | -                | -             | -         | Excluded (insufficient info)                       |
-| Tauri                 | Y            | Y           | Y                | Y             | Y         | fileAssociations + CLI / open-file                 |
-| WinForms              | -            | -           | -                | -             | -         | Excluded (limited UI)                              |
-| WPF                   | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
-| WinUI3                | Y            | Y           | Y                | Y             | Y         | Package FileTypeAssociation; Win32 tray best-effort|
-| wxWidgets             | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration       |
+| Framework             | Notification | System tray | File association | Native dialog | Clipboard | Notes                                               |
+| --------------------- | ------------ | ----------- | ---------------- | ------------- | --------- | --------------------------------------------------- |
+| Avalonia              | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration        |
+| Compose Multiplatform | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration        |
+| Electron              | Y            | Y           | Y                | Y             | Y         | fileAssociations + open-file / second-instance      |
+| Flutter               | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration        |
+| GPUI                  | -            | -           | -                | -             | -         | Excluded (no file picker)                           |
+| MAUI                  | -            | -           | -                | -             | -         | Excluded (WinUI3 wrapper)                           |
+| React Native          | -            | -           | -                | -             | -         | Excluded (insufficient info)                        |
+| Tauri                 | Y            | Y           | Y                | Y             | Y         | fileAssociations + CLI / open-file                  |
+| WinForms              | -            | -           | -                | -             | -         | Excluded (limited UI)                               |
+| WPF                   | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration        |
+| WinUI3                | Y            | Y           | Y                | Y             | Y         | Package FileTypeAssociation; Win32 tray best-effort |
+| wxWidgets             | Y            | Y           | P                | Y             | Y         | P: argv open only; no installer registration        |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -489,20 +489,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 ### 実装面の比較
 
-| Framework             | LOC  | Dependencies | Build time (s) | Bundle size (MB) | Notes                                            |
-| --------------------- | ---- | ------------ | -------------- | ---------------- | ------------------------------------------------ |
-| Avalonia              | 2616 | 7            | 12             | 37               | Self-contained + trimmed (single-file publish)   |
-| Compose Multiplatform | 1857 | 11           | 98             | 45               | MSI (`packageReleaseDistributionForCurrentOS`)   |
-| Electron              | 2424 | 12           | 26             | 293              | `win-unpacked` (`dist` + `dist-electron` only)   |
-| Flutter               | 2390 | 17           | 54             | 27               | `flutter build windows --release`                |
-| GPUI                  | -    | -            | -              | -                | Excluded (no file picker)                        |
-| MAUI                  | -    | -            | -              | -                | Excluded (unimplemented / WinUI3 overlap)        |
-| React Native          | -    | -            | -              | -                | Excluded (insufficient info)                     |
-| Tauri                 | 2266 | 25           | 146            | 11               | exe only (WebView2 runtime not included)         |
-| WinForms              | -    | -            | -              | -                | Excluded (limited UI)                            |
-| WPF                   | 2293 | 3            | 5              | 155              | Self-contained single-file (not trimmed)         |
-| WinUI3                | 2303 | 4            | 23             | 30               | Self-contained + trimmed publish                 |
-| wxWidgets             | 2473 | 1            | 456            | 24               | Nuitka onefile (`TodoApp.exe`)                   |
+| Framework             | LOC  | Dependencies | Build time (s) | Bundle size (MB) | Notes                                          |
+| --------------------- | ---- | ------------ | -------------- | ---------------- | ---------------------------------------------- |
+| Avalonia              | 2616 | 7            | 12             | 37               | Self-contained + trimmed (single-file publish) |
+| Compose Multiplatform | 1857 | 11           | 98             | 45               | MSI (`packageReleaseDistributionForCurrentOS`) |
+| Electron              | 2424 | 12           | 26             | 293              | `win-unpacked` (`dist` + `dist-electron` only) |
+| Flutter               | 2390 | 17           | 54             | 27               | `flutter build windows --release`              |
+| GPUI                  | -    | -            | -              | -                | Excluded (no file picker)                      |
+| MAUI                  | -    | -            | -              | -                | Excluded (unimplemented / WinUI3 overlap)      |
+| React Native          | -    | -            | -              | -                | Excluded (insufficient info)                   |
+| Tauri                 | 2266 | 25           | 146            | 11               | exe only (WebView2 runtime not included)       |
+| WinForms              | -    | -            | -              | -                | Excluded (limited UI)                          |
+| WPF                   | 2293 | 3            | 5              | 155              | Self-contained single-file (not trimmed)       |
+| WinUI3                | 2303 | 4            | 23             | 30               | Self-contained + trimmed publish               |
+| wxWidgets             | 2473 | 1            | 456            | 24               | Nuitka onefile (`TodoApp.exe`)                 |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -525,20 +525,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### メモリ使用量（MB）
 
-| Framework             | Startup (empty) | After 10 | After 100 | After 1000 | Peak | Notes                            |
-| --------------------- | --------------- | -------- | --------- | ---------- | ---- | -------------------------------- |
-| Avalonia              | 117             | 118      | 118       | 118        | 118  | -                                |
-| Compose Multiplatform | 380             | 389      | 389       | 399        | 399  | -                                |
-| Electron              | 226             | 235      | 244       | 252        | 252  | -                                |
-| Flutter               | 111             | 118      | 117       | 124        | 124  | -                                |
-| GPUI                  | -               | -        | -         | -          | -    | Excluded (no file picker)        |
-| MAUI                  | -               | -        | -         | -          | -    | Excluded (unimplemented)         |
-| React Native          | -               | -        | -         | -          | -    | Excluded (insufficient info)     |
-| Tauri                 | 189             | 189      | 189       | 189        | 189  | -                                |
-| WinForms              | -               | -        | -         | -          | -    | Excluded (limited UI)            |
-| WPF                   | 95              | 106      | 112       | 114        | 114  | -                                |
-| WinUI3                | 94              | 95       | 95        | 97         | 97   | Packaged (Appx register)         |
-| wxWidgets             | 20              | 20       | 22        | 23         | 23   | -                                |
+| Framework             | Startup (empty) | After 10 | After 100 | After 1000 | Peak | Notes                        |
+| --------------------- | --------------- | -------- | --------- | ---------- | ---- | ---------------------------- |
+| Avalonia              | 117             | 118      | 118       | 118        | 118  | -                            |
+| Compose Multiplatform | 380             | 389      | 389       | 399        | 399  | -                            |
+| Electron              | 226             | 235      | 244       | 252        | 252  | -                            |
+| Flutter               | 111             | 118      | 117       | 124        | 124  | -                            |
+| GPUI                  | -               | -        | -         | -          | -    | Excluded (no file picker)    |
+| MAUI                  | -               | -        | -         | -          | -    | Excluded (unimplemented)     |
+| React Native          | -               | -        | -         | -          | -    | Excluded (insufficient info) |
+| Tauri                 | 189             | 189      | 189       | 189        | 189  | -                            |
+| WinForms              | -               | -        | -         | -          | -    | Excluded (limited UI)        |
+| WPF                   | 95              | 106      | 112       | 114        | 114  | -                            |
+| WinUI3                | 94              | 95       | 95        | 97         | 97   | Packaged (Appx register)     |
+| wxWidgets             | 20              | 20       | 22        | 23         | 23   | -                            |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -558,20 +558,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### CPU使用率（%）
 
-| Framework             | Idle | Add  | Scroll | Filtering | Peak | Notes                            |
-| --------------------- | ---- | ---- | ------ | --------- | ---- | -------------------------------- |
-| Avalonia              | 0.5  | 8.8  | 7.4    | 8.1       | 8.8  | -                                |
-| Compose Multiplatform | 1.0  | 2.7  | 2.2    | 10.7      | 10.7 | -                                |
-| Electron              | 0.4  | 6.4  | 8.0    | 6.5       | 8.0  | -                                |
-| Flutter               | 0.1  | 12.8 | 1.6    | 13.4      | 13.4 | -                                |
-| GPUI                  | -    | -    | -      | -         | -    | Excluded (no file picker)        |
-| MAUI                  | -    | -    | -      | -         | -    | Excluded (WinUI3 wrapper)        |
-| React Native          | -    | -    | -      | -         | -    | Excluded (insufficient info)     |
-| Tauri                 | 1.0  | 4.8  | 4.9    | 3.9       | 4.9  | app + WebView2 process tree      |
-| WinForms              | -    | -    | -      | -         | -    | Excluded (limited UI)            |
-| WPF                   | 0.6  | 8.0  | 6.5    | 6.1       | 8.0  | -                                |
-| WinUI3                | 0.3  | 7.0  | 6.2    | 6.5       | 7.0  | Packaged (Appx register)         |
-| wxWidgets             | 0.2  | 4.8  | 5.8    | 5.2       | 5.8  | uv run (source)                  |
+| Framework             | Idle | Add  | Scroll | Filtering | Peak | Notes                        |
+| --------------------- | ---- | ---- | ------ | --------- | ---- | ---------------------------- |
+| Avalonia              | 0.5  | 8.8  | 7.4    | 8.1       | 8.8  | -                            |
+| Compose Multiplatform | 1.0  | 2.7  | 2.2    | 10.7      | 10.7 | -                            |
+| Electron              | 0.4  | 6.4  | 8.0    | 6.5       | 8.0  | -                            |
+| Flutter               | 0.1  | 12.8 | 1.6    | 13.4      | 13.4 | -                            |
+| GPUI                  | -    | -    | -      | -         | -    | Excluded (no file picker)    |
+| MAUI                  | -    | -    | -      | -         | -    | Excluded (WinUI3 wrapper)    |
+| React Native          | -    | -    | -      | -         | -    | Excluded (insufficient info) |
+| Tauri                 | 1.0  | 4.8  | 4.9    | 3.9       | 4.9  | app + WebView2 process tree  |
+| WinForms              | -    | -    | -      | -         | -    | Excluded (limited UI)        |
+| WPF                   | 0.6  | 8.0  | 6.5    | 6.1       | 8.0  | -                            |
+| WinUI3                | 0.3  | 7.0  | 6.2    | 6.5       | 7.0  | Packaged (Appx register)     |
+| wxWidgets             | 0.2  | 4.8  | 5.8    | 5.2       | 5.8  | uv run (source)              |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -592,20 +592,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### 起動時間とUI応答性
 
-| Framework             | Startup (s) | Render 1000 (s) | Scroll FPS | Filter response (ms) | Notes                            |
-| --------------------- | ----------- | --------------- | ---------- | -------------------- | -------------------------------- |
-| Avalonia              | -           | -               | -          | -                    | -                                |
-| Compose Multiplatform | -           | -               | -          | -                    | -                                |
-| Electron              | -           | -               | -          | -                    | -                                |
-| Flutter               | -           | -               | -          | -                    | -                                |
-| GPUI                  | -           | -               | -          | -                    | -                                |
-| MAUI                  | -           | -               | -          | -                    | Excluded (WinUI3 wrapper)        |
-| React Native          | -           | -               | -          | -                    | Excluded (insufficient info)     |
-| Tauri                 | -           | -               | -          | -                    | -                                |
-| WinForms              | -           | -               | -          | -                    | Excluded (limited UI)            |
-| WPF                   | -           | -               | -          | -                    | -                                |
-| WinUI3                | -           | -               | -          | -                    | Pending                          |
-| wxWidgets             | -           | -               | -          | -                    | -                                |
+| Framework             | Startup (s) | Render 1000 (s) | Scroll FPS | Filter response (ms) | Notes                                       |
+| --------------------- | ----------- | --------------- | ---------- | -------------------- | ------------------------------------------- |
+| Avalonia              | 1.21        | 0.14            | 60.2       | 18.9                 | -                                           |
+| Compose Multiplatform | 1.34        | 0.04            | 31.4       | 24.8                 | Scroll paced at 16ms ticks                  |
+| Electron              | 0.48        | 0.01            | 60.0       | 17.6                 | -                                           |
+| Flutter               | 0.26        | 0.03            | 58.8       | 18.7                 | Sync filter for typical list sizes          |
+| GPUI                  | -           | -               | -          | -                    | -                                           |
+| MAUI                  | -           | -               | -          | -                    | Excluded (WinUI3 wrapper)                   |
+| React Native          | -           | -               | -          | -                    | Excluded (insufficient info)                |
+| Tauri                 | 0.44        | 0.04            | 60.4       | 17.3                 | -                                           |
+| WinForms              | -           | -               | -          | -                    | Excluded (limited UI)                       |
+| WPF                   | 0.93        | 0.46            | 22.3       | 143.5                | -                                           |
+| WinUI3                | 0.60        | 1.28            | 60.2       | 15.2                 | Packaged LocalState import path             |
+| wxWidgets             | 0.22        | 0.01            | 25.9       | 21.0                 | `uv run` (not Nuitka)                       |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -615,22 +615,30 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Filter response (ms): フィルタリング応答時間（ms）
 - Notes: 備考
 
+**測定メモ**（2026-08-08、上記計測環境）:
+- 各アプリに `--ui-bench` を実装。結果 JSON（`startup_s` / `render_1000_s` / `scroll_fps` / `filter_response_ms`）を書き出し、3 回平均
+- **Startup（公平化）**: OS プロセス作成時刻 → 空 UI の初回フレーム相当。`.NET` / WinUI は `Process.StartTime`、Flutter は runner が `GetProcessTimes` を注入、Compose は `ProcessHandle.startInstant`、Electron は `process.uptime` 逆算、Tauri / wx は `GetProcessTimes`
+- Render 1000: `data/project_1000.json` のインポート開始 → リスト反映（フィルタ適用完了まで待機）。WinUI3 は Appx LocalState 経由 + DataGrid
+- Scroll FPS: 約 3 秒間の programmatic load-more / reset 中のフレーム数。Compose はフレーム時計がベンチ経路で不安定なため 16ms ペースのティック換算
+- Filter: フィルタ ON/OFF を 10 回平均。Flutter は典型的なリスト規模では UI isolate 同期フィルタ（`compute` は 5000 件超）。WinUI は `Task.Run` + UI 反映（WPF/Avalonia と同型）
+- スクリプト: `scripts/measure_ui.ps1` / 終了後 `cleanup_local_leftovers.ps1`
+
 ### 開発体験の評価
 
-| Framework             | Ease of use | Docs | Community | Testability | Overall | Notes                            |
-| --------------------- | ----------- | ---- | --------- | ----------- | ------- | -------------------------------- |
-| Avalonia              | -           | -    | -         | -           | -       | -                                |
-| Compose Multiplatform | -           | -    | -         | -           | -       | -                                |
-| Electron              | -           | -    | -         | -           | -       | -                                |
-| Flutter               | -           | -    | -         | -           | -       | -                                |
-| GPUI                  | -           | -    | -         | -           | -       | -                                |
-| MAUI                  | -           | -    | -         | -           | -       | Excluded (WinUI3 wrapper)        |
-| React Native          | -           | -    | -         | -           | -       | Excluded (insufficient info)     |
-| Tauri                 | -           | -    | -         | -           | -       | -                                |
-| WinForms              | -           | -    | -         | -           | -       | Excluded (limited UI)            |
-| WPF                   | -           | -    | -         | -           | -       | -                                |
-| WinUI3                | -           | -    | -         | -           | -       | Pending                          |
-| wxWidgets             | -           | -    | -         | -           | -       | -                                |
+| Framework             | Ease of use | Docs | Community | Testability | Overall | Notes                        |
+| --------------------- | ----------- | ---- | --------- | ----------- | ------- | ---------------------------- |
+| Avalonia              | -           | -    | -         | -           | -       | -                            |
+| Compose Multiplatform | -           | -    | -         | -           | -       | -                            |
+| Electron              | -           | -    | -         | -           | -       | -                            |
+| Flutter               | -           | -    | -         | -           | -       | -                            |
+| GPUI                  | -           | -    | -         | -           | -       | -                            |
+| MAUI                  | -           | -    | -         | -           | -       | Excluded (WinUI3 wrapper)    |
+| React Native          | -           | -    | -         | -           | -       | Excluded (insufficient info) |
+| Tauri                 | -           | -    | -         | -           | -       | -                            |
+| WinForms              | -           | -    | -         | -           | -       | Excluded (limited UI)        |
+| WPF                   | -           | -    | -         | -           | -       | -                            |
+| WinUI3                | -           | -    | -         | -           | -       | Pending                      |
+| wxWidgets             | -           | -    | -         | -           | -       | -                            |
 
 **ヘッダー**:
 - Framework: フレームワーク

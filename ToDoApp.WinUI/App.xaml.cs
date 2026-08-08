@@ -29,11 +29,19 @@ namespace ToDoApp.WinUI
             var cmdArgs = Environment.GetCommandLineArgs();
             var jsonPath = FindJsonPath(cmdArgs)
                            ?? FindJsonPathFromLaunchArgs(args.Arguments)
-                           ?? FindJsonPathFromAppLifecycle()
-                           ?? CpuBench.TryConsumeRequestJsonPath();
+                           ?? FindJsonPathFromAppLifecycle();
 
-            if (CpuBench.IsEnabled(cmdArgs))
+            // Prefer explicit request files / flags; ui-bench request must win over leftover cpu request.
+            if (UiBench.IsEnabled(cmdArgs))
             {
+                jsonPath ??= UiBench.TryConsumeRequestJsonPath();
+                var outPath = UiBench.ResolveOutPath(cmdArgs);
+                UiBench.ClearRequestFile();
+                _ = RunUiBenchAsync(outPath, jsonPath);
+            }
+            else if (CpuBench.IsEnabled(cmdArgs))
+            {
+                jsonPath ??= CpuBench.TryConsumeRequestJsonPath();
                 var phasePath = CpuBench.ResolvePhasePath(cmdArgs);
                 CpuBench.ClearRequestFile();
                 _ = RunCpuBenchAsync(jsonPath, phasePath);
@@ -70,6 +78,39 @@ namespace ToDoApp.WinUI
                 }
 
                 await CpuBench.RunAsync(viewModel, phasePath, viewModel.DispatcherQueue);
+            }
+            finally
+            {
+                Environment.Exit(0);
+            }
+        }
+
+        private async System.Threading.Tasks.Task RunUiBenchAsync(string outPath, string? jsonPath)
+        {
+            try
+            {
+                MainWindow? mainWindow = null;
+                for (var i = 0; i < 100; i++)
+                {
+                    mainWindow = _window as MainWindow;
+                    if (mainWindow?.MainPage != null)
+                    {
+                        break;
+                    }
+
+                    await System.Threading.Tasks.Task.Delay(50);
+                }
+
+                if (mainWindow?.MainPage == null || string.IsNullOrWhiteSpace(jsonPath))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"UI bench abort: page={mainWindow?.MainPage != null} json={(jsonPath != null)}");
+                    return;
+                }
+
+                var viewModel = mainWindow.MainPage.ViewModel;
+                viewModel.SuppressSave = true;
+                await UiBench.RunAsync(viewModel, outPath, jsonPath, viewModel.DispatcherQueue);
             }
             finally
             {

@@ -7,8 +7,9 @@ import 'package:intl/intl.dart';
 import '../providers/todo_provider.dart';
 import '../models/todo_item.dart';
 import '../models/filter_config.dart';
+import '../services/ui_bench.dart';
 
-const int _bgWorkThreshold = 200;
+const int _bgWorkThreshold = 5000;
 
 /// Top-level entry for [compute] / Isolate — filter then sort.
 List<Map<String, dynamic>> _filterSortWorker(Map<String, dynamic> args) {
@@ -180,7 +181,11 @@ class _TodoTableState extends ConsumerState<TodoTable> {
       sortColumn,
       sortAscending,
     );
-    if (key == _lastProcessKey) return;
+    if (key == _lastProcessKey) {
+      // Already up to date — still unblock ui-bench waiters.
+      UiBenchHooks.notifyTableUpdated();
+      return;
+    }
     _lastProcessKey = key;
     ref.read(todoProvider.notifier).resetVisibleCount();
 
@@ -192,10 +197,14 @@ class _TodoTableState extends ConsumerState<TodoTable> {
         sortColumn,
         sortAscending,
       );
-      if (!mounted || generation != _processGeneration) return;
+      if (!mounted || generation != _processGeneration) {
+        UiBenchHooks.notifyTableUpdated();
+        return;
+      }
       setState(() {
         _processedItems = result;
       });
+      UiBenchHooks.notifyTableUpdated();
       return;
     }
 
@@ -206,11 +215,15 @@ class _TodoTableState extends ConsumerState<TodoTable> {
       'sortAscending': sortAscending,
     });
 
-    if (!mounted || generation != _processGeneration) return;
+    if (!mounted || generation != _processGeneration) {
+      UiBenchHooks.notifyTableUpdated();
+      return;
+    }
     final result = maps.map(TodoItem.fromJson).toList();
     setState(() {
       _processedItems = result;
     });
+    UiBenchHooks.notifyTableUpdated();
   }
 
   void _handleSort(String column) {

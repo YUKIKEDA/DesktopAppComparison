@@ -2,6 +2,7 @@
 import threading
 import wx
 import sys
+import time
 import traceback
 
 from controllers.todo_controller import TodoController
@@ -31,7 +32,16 @@ class JsonFileDropTarget(wx.FileDropTarget):
 
 class MainFrame(wx.Frame):
     """Main application frame."""
-    def __init__(self, startup_json_paths=None, cpu_bench=False, cpu_bench_phase=None):
+    def __init__(
+        self,
+        startup_json_paths=None,
+        cpu_bench=False,
+        cpu_bench_phase=None,
+        ui_bench=False,
+        ui_bench_out=None,
+        ui_bench_json=None,
+        process_start_monotonic=None,
+    ):
         print("MainFrame.__init__: Starting...")
         try:
             print("MainFrame.__init__: Creating frame...")
@@ -50,6 +60,14 @@ class MainFrame(wx.Frame):
             self._cpu_bench_phase = cpu_bench_phase
             self._cpu_bench_active = False
             self._cpu_bench_pending_imports = 0
+            self._ui_bench = bool(ui_bench)
+            self._ui_bench_out = ui_bench_out
+            self._ui_bench_json = ui_bench_json
+            self._ui_bench_active = False
+            self._process_start_monotonic = process_start_monotonic or time.monotonic()
+            self._paint_count = 0
+            self._paint_bound = False
+            self._bench_refresh_wait = None
             self._refresh_generation = 0
 
             print("MainFrame.__init__: Creating controller...")
@@ -102,7 +120,7 @@ class MainFrame(wx.Frame):
             self._setup_accelerators()
             print("MainFrame.__init__: Accelerators set up")
 
-            if self._cpu_bench:
+            if self._cpu_bench or self._ui_bench:
                 # Import + bench chained from load callback
                 pass
             elif self._startup_json_paths:
@@ -148,6 +166,12 @@ class MainFrame(wx.Frame):
                 )
                 if self._cpu_bench_pending_imports <= 0:
                     wx.CallAfter(self._start_cpu_bench)
+            elif self._ui_bench:
+                self._signal_bench_refresh()
+            return
+        if self._ui_bench and not self._ui_bench_active:
+            self.SetStatusText(f"インポートしました: {path}" if path else "インポートしました")
+            self._signal_bench_refresh()
             return
         if not self._cpu_bench_active and not self._cpu_bench:
             self.controller.save_data_async()
@@ -307,7 +331,9 @@ class MainFrame(wx.Frame):
                     )
                 self._refresh_table()
                 self.SetStatusText("準備完了")
-                if self._cpu_bench:
+                if self._ui_bench:
+                    wx.CallAfter(self._ui_bench_after_load)
+                elif self._cpu_bench:
                     wx.CallAfter(self._cpu_bench_after_load)
 
             self.controller.load_data_async(on_done=on_done)
@@ -318,8 +344,129 @@ class MainFrame(wx.Frame):
                 self._refresh_table()
             except Exception as e2:
                 print(f"ERROR refreshing table after load failure: {e2}", file=sys.stderr)
-            if self._cpu_bench:
+            if self._ui_bench:
+                wx.CallAfter(self._ui_bench_after_load)
+            elif self._cpu_bench:
                 wx.CallAfter(self._cpu_bench_after_load)
+
+    def _signal_bench_refresh(self) -> None:
+        waiter = self._bench_refresh_wait
+        if waiter is not None:
+            waiter.set()
+
+    def _wait_bench_refresh(self) -> None:
+        waiter = self._bench_refresh_wait
+        if waiter is None:
+            wx.YieldIfNeeded()
+            return
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            if waiter.is_set():
+                self._bench_refresh_wait = None
+                return
+            time.sleep(0.005)
+        raise TimeoutError("UI refresh timed out during ui-bench")
+
+    def _ui_bench_after_load(self) -> None:
+        """After project load, run UI bench (imports json inside bench)."""
+        if self._ui_bench_active:
+            return
+        self._ui_bench_active = True
+        try:
+            self._auto_save_timer.Stop()
+        except Exception:
+            pass
+
+        from utils.ui_bench import run_ui_bench, PAGE_SIZE
+
+        json_path = self._ui_bench_json
+        if not json_path and self._startup_json_paths:
+            json_path = self._startup_json_paths[0]
+        if not json_path:
+            print("UI bench: missing project JSON path", file=sys.stderr)
+            wx.CallAfter(self._ui_bench_finish)
+            return
+
+        def measure_startup() -> None:
+            wx.YieldIfNeeded()
+
+        def import_json(path: str) -> None:
+            self._bench_refresh_wait = threading.Event()
+            ok = self.controller.import_from_path(path)
+            if not ok:
+                raise RuntimeError(f"Failed to import {path}")
+            self._refresh_table()
+
+        def expand_or_reset() -> None:
+            if not self.table.expand_visible(PAGE_SIZE):
+                self.table.reset_visible()
+            wx.YieldIfNeeded()
+
+        def toggle_filters(on: bool) -> None:
+            self._bench_refresh_wait = threading.Event()
+            self.filter_bar.set_bench_filters(on)
+            self._refresh_table()
+            wx.YieldIfNeeded()
+
+        def bind_paint_counter() -> None:
+            if self._paint_bound:
+                return
+            self._paint_count = 0
+            self.table.Bind(wx.EVT_PAINT, self._on_ui_bench_paint)
+            self._paint_bound = True
+
+        def unbind_paint_counter() -> None:
+            if not self._paint_bound:
+                return
+            self.table.Unbind(wx.EVT_PAINT, handler=self._on_ui_bench_paint)
+            self._paint_bound = False
+
+        def read_paint_count() -> int:
+            return self._paint_count
+
+        def reset_paint_count() -> None:
+            self._paint_count = 0
+
+        run_ui_bench(
+            out_path=self._ui_bench_out,
+            json_path=json_path,
+            process_start_monotonic=self._process_start_monotonic,
+            measure_startup=measure_startup,
+            import_json=import_json,
+            wait_import_applied=self._wait_bench_refresh,
+            expand_or_reset=expand_or_reset,
+            toggle_filters=toggle_filters,
+            wait_filter_applied=self._wait_bench_refresh,
+            bind_paint_counter=bind_paint_counter,
+            unbind_paint_counter=unbind_paint_counter,
+            read_paint_count=read_paint_count,
+            reset_paint_count=reset_paint_count,
+            on_done=self._ui_bench_finish,
+        )
+
+    def _on_ui_bench_paint(self, event: wx.PaintEvent) -> None:
+        self._paint_count += 1
+        event.Skip()
+
+    def _ui_bench_finish(self) -> None:
+        """Exit after writing UI bench JSON."""
+        self._allow_close = True
+        try:
+            if self._tray_icon:
+                self._tray_icon.RemoveIcon()
+                self._tray_icon.Destroy()
+                self._tray_icon = None
+        except Exception:
+            pass
+        try:
+            self._cleanup_resources()
+        except Exception:
+            pass
+        self.Destroy()
+        app = wx.GetApp()
+        if app:
+            app.ExitMainLoop()
+        sys.exit(0)
 
     def _cpu_bench_after_load(self) -> None:
         """After project load, import argv JSON then start CPU bench."""
@@ -415,8 +562,8 @@ class MainFrame(wx.Frame):
 
             self._sync_detail_frames()
 
-            # Schedule auto-save (restart timer with debounce) — skip for CPU bench runs
-            if not self._cpu_bench:
+            # Schedule auto-save (restart timer with debounce) — skip for bench runs
+            if not self._cpu_bench and not self._ui_bench:
                 self._auto_save_timer.Stop()
                 self._auto_save_timer.StartOnce(2000)  # 2 seconds in milliseconds
                 print("_on_data_changed: Auto-save scheduled")
@@ -484,6 +631,7 @@ class MainFrame(wx.Frame):
                         self.SetStatusText(
                             f"合計: {total_count}件 / 表示: {filtered_count}件"
                         )
+                        self._signal_bench_refresh()
                     except Exception as e:
                         wx.LogError(f"Error applying table refresh: {e}")
 
