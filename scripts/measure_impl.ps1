@@ -42,7 +42,7 @@ function Remove-Path([string]$p) {
   }
 }
 
-function Ensure-Jdk {
+function Initialize-Jdk {
   $jpackage = Join-Path $JdkHome "bin\jpackage.exe"
   if (Test-Path $jpackage) {
     Log "JDK already present: $JdkHome"
@@ -113,7 +113,7 @@ function Measure-App {
   }
 }
 
-function Clean-DotNet([string]$projDir) {
+function Clear-DotNetArtifacts([string]$projDir) {
   Push-Location $projDir
   try {
     cmd /c "dotnet clean -c Release --nologo -v q" | Out-Null
@@ -144,7 +144,7 @@ Push-Location $WinUiDir; cmd /c "dotnet restore -p:Platform=x64 --nologo -v q"; 
 Push-Location $ElectronDir; cmd /c "npm install --silent"; Pop-Location
 Push-Location $TauriDir; cmd /c "npm install --silent"; Pop-Location
 Push-Location $FlutterDir; cmd /c "flutter pub get"; Pop-Location
-Ensure-Jdk
+Initialize-Jdk
 
 # Warm Gradle wrapper download (untimed)
 Push-Location $ComposeDir
@@ -156,7 +156,7 @@ try {
 $results = @()
 
 $results += Measure-App -Name "Avalonia" -WorkDir $AvaloniaDir `
-  -Clean { Clean-DotNet $AvaloniaDir } `
+  -Clean { Clear-DotNetArtifacts $AvaloniaDir } `
   -Build {
     cmd /c "dotnet publish -c Release -p:PublishProfile=FolderProfile --nologo -v q"
     $script:LastBuildCode = $LASTEXITCODE
@@ -164,7 +164,7 @@ $results += Measure-App -Name "Avalonia" -WorkDir $AvaloniaDir `
   -Size { DirMB (Join-Path $AvaloniaDir "bin\Release\net9.0\publish\win-x64") }
 
 $results += Measure-App -Name "WPF" -WorkDir $WpfDir `
-  -Clean { Clean-DotNet $WpfDir } `
+  -Clean { Clear-DotNetArtifacts $WpfDir } `
   -Build {
     cmd /c "dotnet publish -c Release -p:PublishProfile=FolderProfile --nologo -v q"
     $script:LastBuildCode = $LASTEXITCODE
@@ -173,7 +173,7 @@ $results += Measure-App -Name "WPF" -WorkDir $WpfDir `
 
 $results += Measure-App -Name "WinUI3" -WorkDir $WinUiDir `
   -Clean {
-    Clean-DotNet $WinUiDir
+    Clear-DotNetArtifacts $WinUiDir
     Remove-Path (Join-Path $WinUiDir "bin")
     Remove-Path (Join-Path $WinUiDir "obj")
   } `
@@ -261,6 +261,12 @@ $results += Measure-App -Name "wxWidgets" -WorkDir $WxDir `
 
 $results | ConvertTo-Json -Depth 5 | Set-Content $JsonFile -Encoding utf8
 Log "DONE wrote $JsonFile"
+
+$cleanup = Join-Path $PSScriptRoot "cleanup_local_leftovers.ps1"
+if (Test-Path $cleanup) {
+  Log "Running cleanup_local_leftovers.ps1"
+  & $cleanup
+}
 $results | ForEach-Object {
   Log ("SUMMARY {0}: avg_time={1}s avg_size={2}MB" -f $_.name, $_.avg_time_s, $_.avg_size_mb)
 }

@@ -53,14 +53,14 @@
       "dist/**/*",
       "dist-electron/**/*"
     ],
-    "fileAssociations": [
-      {
-        "ext": "json",
-        "name": "Todo Project",
-        "description": "Todo App project data",
-        "role": "Editor",
-        "mimeType": "application/json"
-      }
-    ]
+    "nsis": {
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": false,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "win": {
+      "target": ["dir"]
+    }
   }
 }

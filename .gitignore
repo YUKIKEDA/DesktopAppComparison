@@ -87,6 +87,8 @@ lerna-debug.log*
 out/
 dist/
 dist-electron/
+release/
+release-measure/
 
 # Flutter
 .dart_tool/
@@ -152,6 +154,8 @@ $RECYCLE.BIN/
 *.cab
 *.msi
 *.msix
+AppPackages/
+BundleArtifacts/
 *.msm
 *.msp
 *.lnk

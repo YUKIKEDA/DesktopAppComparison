@@ -525,20 +525,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 #### メモリ使用量（MB）
 
-| Framework             | Startup (empty) | After 10 | After 100 | After 1000 | Peak                         |
-| --------------------- | --------------- | -------- | --------- | ---------- | ---------------------------- |
-| Avalonia              | -               | -        | -         | -          | -                            |
-| Compose Multiplatform | -               | -        | -         | -          | -                            |
-| Electron              | -               | -        | -         | -          | -                            |
-| Flutter               | -               | -        | -         | -          | -                            |
-| GPUI                  | -               | -        | -         | -          | -                            |
-| MAUI                  | -               | -        | -         | -          | Excluded (WinUI3 wrapper)    |
-| React Native          | -               | -        | -         | -          | Excluded (insufficient info) |
-| Tauri                 | -               | -        | -         | -          | -                            |
-| WinForms              | -               | -        | -         | -          | Excluded (limited UI)        |
-| WPF                   | -               | -        | -         | -          | -                            |
-| WinUI3                | -               | -        | -         | -          | Pending                      |
-| wxWidgets             | -               | -        | -         | -          | -                            |
+| Framework             | Startup (empty) | After 10 | After 100 | After 1000 | Peak | Notes                            |
+| --------------------- | --------------- | -------- | --------- | ---------- | ---- | -------------------------------- |
+| Avalonia              | 117             | 118      | 118       | 118        | 118  | -                                |
+| Compose Multiplatform | 380             | 389      | 389       | 399        | 399  | -                                |
+| Electron              | 226             | 235      | 244       | 252        | 252  | -                                |
+| Flutter               | 111             | 118      | 117       | 124        | 124  | -                                |
+| GPUI                  | -               | -        | -         | -          | -    | Excluded (no file picker)        |
+| MAUI                  | -               | -        | -         | -          | -    | Excluded (unimplemented)         |
+| React Native          | -               | -        | -         | -          | -    | Excluded (insufficient info)     |
+| Tauri                 | 189             | 189      | 189       | 189        | 189  | -                                |
+| WinForms              | -               | -        | -         | -          | -    | Excluded (limited UI)            |
+| WPF                   | 95              | 106      | 112       | 114        | 114  | -                                |
+| WinUI3                | 94              | 95       | 95        | 97         | 97   | Packaged (Appx register)         |
+| wxWidgets             | 20              | 20       | 22        | 23         | 23   | -                                |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -547,23 +547,31 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - After 100: 100件追加後
 - After 1000: 1000件追加後
 - Peak: ピーク使用量
+- Notes: 備考
+
+**測定メモ**（2026-08-08、上記計測環境）:
+- 指標: プライベートメモリ（`PrivateMemorySize64`、MB）。Peak は当該アプリの 4 状態平均のうち最大値
+- 各状態×3 回の平均。起動後約 8〜12 秒待機してから計測。`data/project_{0,10,100,1000}.json` を CLI 引数（または永続ファイルへコピー）で投入
+- Electron: 関連プロセス（同名）の Private 合計。Tauri: 本体 + WebView2 子プロセスの Private 合計。wxWidgets: venv 経由の GUI プロセス（onefile スタブは不使用）
+- WinUI3: exe 直起動は `0xC000027B` で失敗するため、`AppxManifest.xml` を `Add-AppxPackage -Register` したうえで `shell:AppsFolder\...!App` 起動。データは `%LocalAppData%\Packages\<PFN>\LocalState\Data\project.json` へコピー
+- スクリプト: `scripts/measure_memory.ps1` / `scripts/measure_memory_partial.ps1`
 
 #### CPU使用率（%）
 
-| Framework             | Idle | Add | Scroll | Filtering | Peak                         |
-| --------------------- | ---- | --- | ------ | --------- | ---------------------------- |
-| Avalonia              | -    | -   | -      | -         | -                            |
-| Compose Multiplatform | -    | -   | -      | -         | -                            |
-| Electron              | -    | -   | -      | -         | -                            |
-| Flutter               | -    | -   | -      | -         | -                            |
-| GPUI                  | -    | -   | -      | -         | -                            |
-| MAUI                  | -    | -   | -      | -         | Excluded (WinUI3 wrapper)    |
-| React Native          | -    | -   | -      | -         | Excluded (insufficient info) |
-| Tauri                 | -    | -   | -      | -         | -                            |
-| WinForms              | -    | -   | -      | -         | Excluded (limited UI)        |
-| WPF                   | -    | -   | -      | -         | -                            |
-| WinUI3                | -    | -   | -      | -         | Pending                      |
-| wxWidgets             | -    | -   | -      | -         | -                            |
+| Framework             | Idle | Add | Scroll | Filtering | Peak | Notes                            |
+| --------------------- | ---- | --- | ------ | --------- | ---- | -------------------------------- |
+| Avalonia              | -    | -   | -      | -         | -    | -                                |
+| Compose Multiplatform | -    | -   | -      | -         | -    | -                                |
+| Electron              | -    | -   | -      | -         | -    | -                                |
+| Flutter               | -    | -   | -      | -         | -    | -                                |
+| GPUI                  | -    | -   | -      | -         | -    | -                                |
+| MAUI                  | -    | -   | -      | -         | -    | Excluded (WinUI3 wrapper)        |
+| React Native          | -    | -   | -      | -         | -    | Excluded (insufficient info)     |
+| Tauri                 | -    | -   | -      | -         | -    | -                                |
+| WinForms              | -    | -   | -      | -         | -    | Excluded (limited UI)            |
+| WPF                   | -    | -   | -      | -         | -    | -                                |
+| WinUI3                | -    | -   | -      | -         | -    | Pending                          |
+| wxWidgets             | -    | -   | -      | -         | -    | -                                |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -572,23 +580,24 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Scroll: スクロール時
 - Filtering: フィルタリング時
 - Peak: ピーク使用率
+- Notes: 備考
 
 #### 起動時間とUI応答性
 
-| Framework             | Startup (s) | Render 1000 (s) | Scroll FPS | Filter response (ms)         |
-| --------------------- | ----------- | --------------- | ---------- | ---------------------------- |
-| Avalonia              | -           | -               | -          | -                            |
-| Compose Multiplatform | -           | -               | -          | -                            |
-| Electron              | -           | -               | -          | -                            |
-| Flutter               | -           | -               | -          | -                            |
-| GPUI                  | -           | -               | -          | -                            |
-| MAUI                  | -           | -               | -          | Excluded (WinUI3 wrapper)    |
-| React Native          | -           | -               | -          | Excluded (insufficient info) |
-| Tauri                 | -           | -               | -          | -                            |
-| WinForms              | -           | -               | -          | Excluded (limited UI)        |
-| WPF                   | -           | -               | -          | -                            |
-| WinUI3                | -           | -               | -          | Pending                      |
-| wxWidgets             | -           | -               | -          | -                            |
+| Framework             | Startup (s) | Render 1000 (s) | Scroll FPS | Filter response (ms) | Notes                            |
+| --------------------- | ----------- | --------------- | ---------- | -------------------- | -------------------------------- |
+| Avalonia              | -           | -               | -          | -                    | -                                |
+| Compose Multiplatform | -           | -               | -          | -                    | -                                |
+| Electron              | -           | -               | -          | -                    | -                                |
+| Flutter               | -           | -               | -          | -                    | -                                |
+| GPUI                  | -           | -               | -          | -                    | -                                |
+| MAUI                  | -           | -               | -          | -                    | Excluded (WinUI3 wrapper)        |
+| React Native          | -           | -               | -          | -                    | Excluded (insufficient info)     |
+| Tauri                 | -           | -               | -          | -                    | -                                |
+| WinForms              | -           | -               | -          | -                    | Excluded (limited UI)            |
+| WPF                   | -           | -               | -          | -                    | -                                |
+| WinUI3                | -           | -               | -          | -                    | Pending                          |
+| wxWidgets             | -           | -               | -          | -                    | -                                |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -596,23 +605,24 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Render 1000 (s): 1000件表示時間（秒）
 - Scroll FPS: スクロール時 FPS
 - Filter response (ms): フィルタリング応答時間（ms）
+- Notes: 備考
 
 ### 開発体験の評価
 
-| Framework             | Ease of use | Docs | Community | Testability | Overall                      |
-| --------------------- | ----------- | ---- | --------- | ----------- | ---------------------------- |
-| Avalonia              | -           | -    | -         | -           | -                            |
-| Compose Multiplatform | -           | -    | -         | -           | -                            |
-| Electron              | -           | -    | -         | -           | -                            |
-| Flutter               | -           | -    | -         | -           | -                            |
-| GPUI                  | -           | -    | -         | -           | -                            |
-| MAUI                  | -           | -    | -         | -           | Excluded (WinUI3 wrapper)    |
-| React Native          | -           | -    | -         | -           | Excluded (insufficient info) |
-| Tauri                 | -           | -    | -         | -           | -                            |
-| WinForms              | -           | -    | -         | -           | Excluded (limited UI)        |
-| WPF                   | -           | -    | -         | -           | -                            |
-| WinUI3                | -           | -    | -         | -           | Pending                      |
-| wxWidgets             | -           | -    | -         | -           | -                            |
+| Framework             | Ease of use | Docs | Community | Testability | Overall | Notes                            |
+| --------------------- | ----------- | ---- | --------- | ----------- | ------- | -------------------------------- |
+| Avalonia              | -           | -    | -         | -           | -       | -                                |
+| Compose Multiplatform | -           | -    | -         | -           | -       | -                                |
+| Electron              | -           | -    | -         | -           | -       | -                                |
+| Flutter               | -           | -    | -         | -           | -       | -                                |
+| GPUI                  | -           | -    | -         | -           | -       | -                                |
+| MAUI                  | -           | -    | -         | -           | -       | Excluded (WinUI3 wrapper)        |
+| React Native          | -           | -    | -         | -           | -       | Excluded (insufficient info)     |
+| Tauri                 | -           | -    | -         | -           | -       | -                                |
+| WinForms              | -           | -    | -         | -           | -       | Excluded (limited UI)            |
+| WPF                   | -           | -    | -         | -           | -       | -                                |
+| WinUI3                | -           | -    | -         | -           | -       | Pending                          |
+| wxWidgets             | -           | -    | -         | -           | -       | -                                |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -621,6 +631,7 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Community: コミュニティ
 - Testability: テスタビリティ
 - Overall: 総合評価
+- Notes: 備考
 
 **評価基準**:
 
