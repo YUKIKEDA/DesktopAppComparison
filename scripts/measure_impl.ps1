@@ -254,10 +254,11 @@ $results += Measure-App -Name "wxWidgets" -WorkDir $WxDir `
     Remove-Path (Join-Path $WxDir "dist\TodoApp.exe")
   } `
   -Build {
-    cmd /c "`"$WxPython`" -m nuitka --standalone --onefile --disable-ccache --include-package=wx --include-package-data=wx --windows-console-mode=disable --include-module=models --include-module=views --include-module=controllers --include-module=utils --output-dir=dist --output-filename=TodoApp.exe main.py"
+    # Prefer standalone folder over --onefile (Defender often false-positives onefile stubs).
+    cmd /c "`"$WxPython`" -m nuitka --standalone --disable-ccache --include-package=wx --include-package-data=wx --windows-console-mode=disable --include-module=models --include-module=views --include-module=controllers --include-module=utils --output-dir=dist --output-filename=TodoApp.exe main.py"
     $script:LastBuildCode = $LASTEXITCODE
   } `
-  -Size { FileMB (Join-Path $WxDir "dist\TodoApp.exe") }
+  -Size { DirMB (Join-Path $WxDir "dist\main.dist") }
 
 $results | ConvertTo-Json -Depth 5 | Set-Content $JsonFile -Encoding utf8
 Log "DONE wrote $JsonFile"

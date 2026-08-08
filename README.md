@@ -8,50 +8,74 @@
 
 読み手が先に知りたい結論だけをここに置く。詳細な表・測定条件・除外理由は後続セクションを参照。
 
-### 総合ランキング
+### 総合ランキング A — Graphics 要件なし（計測ベース）
 
-実装 8 FW を、次の **5 軸を等重み**（各 1〜5・高いほど良い・相対正規化）で平均し順位付けした。
+Todo 実装の計測と、本アプリの機能ギャップのみ。**Graphics / HWND は含めない。**
 
-| Axis           | What it covers                                                       |
-| -------------- | -------------------------------------------------------------------- |
-| Runtime        | Memory peak + CPU peak (lower is better → higher score)              |
-| Responsiveness | Startup, Render 1000, Scroll FPS, Filter (faster/smoother → higher)  |
-| Footprint      | Bundle size (smaller → higher; Tauri excludes WebView2 runtime)      |
-| DX             | Developer-experience Overall (relative within this repo)             |
-| Features       | Desktop capability gaps vs this app's requirements (multi-window, …) |
+| Axis           | What it covers                                                            |
+| -------------- | ------------------------------------------------------------------------- |
+| Runtime        | Memory peak + CPU peak (lower is better → higher score)                   |
+| Responsiveness | Startup, Render 1000, Scroll FPS, Filter (faster/smoother → higher)       |
+| Footprint      | Bundle size (smaller → higher; Tauri excludes WebView2 runtime)           |
+| DX             | Dev experience **including styling/theming** (see DX table; relative 1–5) |
+| Features       | Todo desktop gaps (multi-window, file assoc, **shipping model**, …)       |
 
-| Rank | Framework             | Score | Runtime | Resp. | Footprint | DX  | Feat. | Blurb (EN)                                      |
-| ---- | --------------------- | ----- | ------- | ----- | --------- | --- | ----- | ----------------------------------------------- |
-| 1    | Tauri                 | 4.3   | 3.5     | 5     | 5         | 3   | 5     | Best overall after weighting desktop features   |
-| 2    | wxWidgets             | 3.8   | 5       | 4     | 4.5       | 1   | 4.5   | Lightest runtime; full windows; weak DX         |
-| 3    | Flutter               | 3.8   | 3.5     | 5     | 4.5       | 4   | 2     | Strong elsewhere; multi-window `N` is a big hit |
-| 4    | Electron              | 3.7   | 2.5     | 5     | 1         | 5   | 5     | DX/UI ceiling; complete desktop features        |
-| 5    | Avalonia              | 3.7   | 4       | 3.5   | 3.5       | 3   | 4.5   | Steady .NET cross-platform middle ground        |
-| 6    | WinUI3                | 3.3   | 4       | 2.5   | 4         | 1   | 5     | Lean memory + full features; Appx DX hurts      |
-| 7    | WPF                   | 3.1   | 4       | 2     | 2         | 3   | 4.5   | Mature; weak scroll/filter latency              |
-| 8    | Compose Multiplatform | 2.6   | 1       | 3     | 3         | 2   | 4     | Nice UI; heavy RAM and desktop friction         |
+5 軸等重み平均。
 
-**軸の解説**:
-- **Runtime**: メモリ Peak・CPU Peak。軽い／低いほど高得点
-- **Responsiveness**: Startup・Render 1000・Scroll FPS・Filter。速い／滑らかほど高得点
-- **Footprint**: Bundle size。小さいほど高得点（Tauri は WebView2 ランタイム別配布）
-- **DX**: 開発体験 Overall（本リポ相対評価）
-- **Features**: 本アプリ要件に対するデスクトップ機能の欠落。マルチウィンドウ `N`、透過 `P`、ファイル関連付け `P` などを減点（Flutter の multi-window 非対応はここが大きく効く）
+| Rank | Framework             | Score | Runtime | Resp. | Footprint | DX  | Feat. | Blurb (EN)                                         |
+| ---- | --------------------- | ----- | ------- | ----- | --------- | --- | ----- | -------------------------------------------------- |
+| 1    | Tauri                 | 4.5   | 3.5     | 5     | 5         | 4   | 5     | Size/CPU + CSS styling; Todo desktop feats         |
+| 2    | Flutter               | 3.9   | 3.5     | 5     | 4.5       | 4.5 | 2     | Strong DX/styling; multi-window `N` is a big hit   |
+| 3    | Avalonia              | 3.8   | 4       | 3.5   | 3.5       | 3.5 | 4.5   | Solid .NET; XAML styling capable                   |
+| 4    | Electron              | 3.7   | 2.5     | 5     | 1         | 5   | 5     | DX/styling ceiling; heavy bundle                   |
+| 5    | wxWidgets             | 3.2   | 5       | 4     | 2.5       | 1   | 3.5   | Lightest runtime; weak styling; ~100MB Nuitka ship |
+| 5    | WPF                   | 3.2   | 4       | 2     | 2         | 3.5 | 4.5   | Mature XAML styling; weak scroll/filter latency    |
+| 7    | WinUI3                | 3.0   | 4       | 2.5   | 4         | 2   | 2.5   | XAML OK; Appx-only ship still dominates DX         |
+| 8    | Compose Multiplatform | 2.7   | 1       | 3     | 3         | 2.5 | 4     | Theme OK; heavy RAM and desktop friction           |
 
-**順位の解説**:
-- **1 Tauri**: Features を入れたあと総合首位。配布・CPU・デスクトップ機能が揃う
-- **2 wxWidgets**: 実行時は最軽量級でウィンドウ機能も充足。DX が足を引っ張る（同点 Flutter より Features で上位）
-- **3 Flutter**: 起動・UI・DX・サイズは強いが、**第一級マルチウィンドウ非対応**で Features を大きく減点
-- **4 Electron**: DX・UI・機能は天井。バンドルが重い
-- **5 Avalonia**: .NET クロスプラットフォームの堅実枠
-- **6 WinUI3**: メモリと機能は良いが Appx DX と Render が弱い
-- **7 WPF**: 成熟だがスクロール／フィルタ応答が弱い
-- **8 Compose Multiplatform**: UI は良いがメモリと desktop 摩擦が大きい
+**解説（A）**:
+- **DX にスタイリング／テーマを明示**して再配点（CSS 系・Flutter Theme・XAML を高く、wx のネイティブ見た目制約を低く）
+- **1 Tauri**: 配布・CPU に加え、フロント CSS で見た目調整がしやすい
+- **2 Flutter**: スタイリング／DX は強い。multi-window `N` で Features 減点
+- **3 Avalonia**: XAML スタイリング可能で Electron より計測バランスが良い場合あり
+- **4 Electron**: スタイリングは天井だがバンドルが重い
+- **5 wx / WPF**: wx は実行時最強でも見た目カスタムと配布が弱い。WPF は XAML は強いが UI 応答が弱い
+- **7 WinUI3**: スタイル自体は XAML で可だが Appx 配布が DX を押し下げ
+- **8 Compose**: テーマは中位、メモリと desktop 摩擦
 
-**読み方**:
-- 「どれか一つ」なら **Tauri**（機能込みの総合）。マルチウィンドウが不要で DX を取るなら **Flutter** / **Electron**
-- **Electron** は総合 4 位でも DX 最優先なら実質の本命になりうる（用途別表を参照）
-- スコアは本リポ条件での相対値であり、絶対的な業界順位ではない
+### 総合ランキング B — Graphics 要件あり（計測 + 定性）
+
+**大規模メッシュ／ネイティブ GPU（HWND・SwapChain・D3D / Vulkan 等）を要件に含める場合。**  
+スコアは **`Score_B = (Score_A + Gfx) / 2`**（計測総合と Graphics 定性を等重み）。Gfx は未計測。  
+Windows 上の大規模描画は **D3D/Vulkan 経路の用意しやすさ**を GL 専用よりやや高く見る。
+
+| Rank | Framework             | Score B | Score A | Gfx | Blurb (EN)                                        |
+| ---- | --------------------- | ------- | ------- | --- | ------------------------------------------------- |
+| 1    | Avalonia              | 4.2     | 3.8     | 4.5 | HWND/platform handle; host D3D/Vulkan beside UI   |
+| 2    | WinUI3                | 4.0     | 3.0     | 5   | SwapChainPanel; Appx shipping still drags Score A |
+| 3    | WPF                   | 3.9     | 3.2     | 4.5 | Mature D3DImage / DXGI interop                    |
+| 4    | Tauri                 | 3.8     | 4.5     | 3   | A-rank leader; WebView UI ≠ HWND swapchain host   |
+| 5    | wxWidgets             | 3.4     | 3.2     | 3.5 | GL-first; weak styling; ~100MB folder ship        |
+| 6    | Electron              | 3.1     | 3.7     | 2.5 | WebGL/WebGPU inside Chromium                      |
+| 7    | Flutter               | 3.0     | 3.9     | 2   | Multi-window gap + weak CAD-scale GPU story       |
+| 8    | Compose Multiplatform | 2.6     | 2.7     | 2.5 | Heavy RAM; limited desktop GPU host story         |
+
+**解説（B）**:
+- Graphics 込みでは **Avalonia → WinUI → WPF** が上位（HWND/D3D 経路）
+- **wx** は GL 第一級・D3D DIY、スタイリング弱、standalone ~100MB で B も中位
+- Tauri は A 首位でも WebView 主表面のため B では中位
+- **A と B は混ぜない**
+
+### Graphics スコア（B の入力・定性・未計測）
+
+| Gfx | Frameworks                      | Note (EN)                                                  |
+| --- | ------------------------------- | ---------------------------------------------------------- |
+| 5   | WinUI3                          | SwapChainPanel (first-class D3D/DXGI)                      |
+| 4.5 | Avalonia, WPF                   | HWND / D3DImage — DirectX-oriented hosting                 |
+| 3.5 | wxWidgets                       | First-class OpenGL; DirectX only via manual HWND swapchain |
+| 3   | Tauri                           | Rust wgpu/Vulkan possible; WebView ≠ HWND surface          |
+| 2.5 | Electron, Compose Multiplatform | WebGL/Skia-centric                                         |
+| 2   | Flutter                         | FFI/texture; not idiomatic for CAD-scale GPU               |
 
 ### ひと目で見る結果
 
@@ -63,8 +87,8 @@
 | Flutter               | 124           | 13.4         | 0.26        | 27          | ****  | Fast start; no first-class multi-window |
 | Tauri                 | 189           | 4.9          | 0.44        | 11          | ***   | Smallest bundle; low CPU; Rust cost     |
 | WPF                   | 114           | 8.0          | 0.93        | 155         | ***   | Mature .NET; weak scroll/filter latency |
-| WinUI3                | 97            | 7.0          | 0.60        | 30          | *     | Lean memory; Appx DX is heaviest        |
-| wxWidgets             | 23            | 5.8          | 0.22        | 24          | *     | Lightest RAM / start; weak ecosystem    |
+| WinUI3                | 97            | 7.0          | 0.60        | 30          | *     | Lean memory; Appx-only ship is painful  |
+| wxWidgets             | 23            | 5.8          | 0.22        | 100         | *     | Lightest RAM; ~100MB standalone folder  |
 
 （数値は詳細表の Peak / Startup / Bundle / DX Overall。DX は実装 8 FW 内の相対評価。）
 
@@ -73,36 +97,39 @@
 - **メモリ**: wx が突出して軽い（Peak 23 MB）。続けて WinUI / WPF / Avalonia / Flutter が ~100 MB 帯。Compose が最も重い（~400 MB）。Electron / Tauri は WebView 込みで中〜大。
 - **CPU**: アイドルはいずれも低い。負荷ピークは Flutter の Add/Filter がやや高く、Tauri / wx は抑えめ。差は「どの操作が重いか」の違いが大きい。
 - **起動・UI**: 起動は wx / Flutter が速い。1000 件描画は Web 系と Compose / Flutter が速い一方、WinUI DataGrid は遅め、WPF はスクロール FPS・フィルタ応答が弱い。
-- **配布サイズ**: Tauri が最小（11 MB、WebView2 ランタイム別）。Electron が最大（~293 MB）。.NET self-contained はトリム有無で差が出る。
-- **開発体験**: Electron > Flutter ≫ Avalonia / Tauri / WPF > Compose ≫ WinUI / wx。Web スキル流用と公式エコシステムが効く。WinUI は Appx、Compose は Gradle/配布、wx は情報量・テスト基盤がボトルネック。
+- **配布サイズ**: Tauri が最小（11 MB、WebView2 ランタイム別）。Electron が最大（~293 MB）。**wx の実用配布は standalone フォルダ約 100 MB**（旧 onefile ~24 MB は Defender 誤検知で非推奨）。.NET self-contained はトリム有無で差が出る。
+- **開発体験**: Electron（スタイリング含む天井）> Flutter / Tauri（CSS or Theme）≫ Avalonia / WPF（XAML）> Compose > WinUI（Appx が支配）> wx（見た目カスタムが弱い）
 - **機能面**: 実装 8 FW は基本 CRUD 等を概ね同水準。**Flutter のみマルチウィンドウがフレームワーク制約で `N`**（デスクトップ用途では大きい欠落）。ほか透過 `P` やファイル関連付け `P` なども差が出る
+- **Graphics**: **ランキング A には入れない**。重い描画が要件なら **ランキング B**（Avalonia / WinUI / WPF が上位。wx は GL 第一級で D3D は DIY）
 
 ### 用途別の目安
 
-| Priority                        | Picks              | Why (EN)                                         |
-| ------------------------------- | ------------------ | ------------------------------------------------ |
-| Fast hiring / shipping velocity | Electron, Flutter  | Strong DX, docs, and UI-test tooling             |
-| Need multi-window desktop UX    | Tauri, Electron, … | Avoid Flutter here (no first-class multi-window) |
-| Minimize memory                 | wxWidgets, WinUI3  | Lowest peaks (wx lightest)                       |
-| Minimize install size           | Tauri              | Smallest exe (WebView2 runtime separate)         |
-| Reuse .NET / XAML skills        | Avalonia, WPF      | Easy MVVM transfer; watch WPF UI latency         |
-| Balance size + CPU              | Tauri, Flutter     | Small–mid bundle; relatively fast startup        |
-| Native Windows look             | WinUI3             | Good memory; packaging DX is heavy               |
+| Priority                        | Picks                     | Why (EN)                                             |
+| ------------------------------- | ------------------------- | ---------------------------------------------------- |
+| Fast hiring / shipping velocity | Electron, Flutter         | Strong DX, docs, and UI-test tooling                 |
+| Need multi-window desktop UX    | Tauri, Electron, …        | Avoid Flutter here (no first-class multi-window)     |
+| Heavy mesh / native GPU viz     | Avalonia, WinUI3, WPF, wx | Prefer D3D/HWND hosts; wx is GL-first (D3D is DIY)   |
+| Minimize memory                 | wxWidgets, WinUI3         | Lowest peaks (wx lightest)                           |
+| Minimize install size           | Tauri                     | Smallest exe (WebView2 runtime separate)             |
+| Reuse .NET / XAML skills        | Avalonia, WPF, WinUI3     | MVVM + surfaces; WinUI Appx packaging is painful     |
+| Balance size + CPU              | Tauri, Flutter            | Small–mid bundle; relatively fast startup            |
+| Native Windows look             | WinUI3                    | Good memory/look; Appx-only distribution is heaviest |
 
 **用途別の解説**:
 - **開発速度・人材調達**: Electron / Flutter。DX・ドキュメント・UI テストが強い（マルチウィンドウ必須なら Flutter は避ける）
 - **マルチウィンドウ必須**: Tauri / Electron ほか（Flutter は第一級 API がなく非対応）
+- **大規模メッシュ／ネイティブ GPU 描画**: **ランキング B**（Avalonia / WinUI / WPF が上位。wx は GL 第一級・D3D は HWND DIY のため一段下）
 - **メモリ最小化**: wxWidgets / WinUI3。Peak が小さい（wx が最軽量）
 - **配布サイズ最小化**: Tauri。exe が最小（ランタイム前提に注意）
-- **.NET / XAML 資産の活用**: Avalonia / WPF。MVVM 転用しやすい。WPF は UI 応答に注意
+- **.NET / XAML 資産の活用**: Avalonia / WPF を優先しがち。WinUI は見た目・GPU は強いが **Appx 配布が本リポで最大の摩擦**
 - **バランス（サイズ+CPU）**: Tauri / Flutter。小〜中バンドル、起動も比較的速い
-- **Windows ネイティブ見た目**: WinUI3。メモリは良いがパッケージ開発体験は重い
+- **Windows ネイティブ見た目**: WinUI3。ただし exe 直配布できず登録前提
 
-**注意**: 総評は「同じ Todo をこのリポで実装・計測した結果」に限定される。アプリ規模・チームスキル・ターゲット OS が変われば最適解も変わる。
+**注意**: **ランキング A** = Todo 計測のみ。**ランキング B** = A と Graphics 定性の平均（未計測の Gfx を含む）。用途に応じてどちらか一方を使う。
 
 ### この README の読み方
 
-1. **総評**（本節）→ 総合ランキングと用途別の当たりをつける
+1. **総評**（本節）→ **ランキング A（Graphics なし）** と **B（Graphics あり）** を用途で使い分ける
 2. **[実行バイナリの場所](#実行バイナリの場所windows)** → 各アプリの起動パス
 3. **[比較結果](#比較結果)** → 機能・LOC・メモリ・CPU・UI・DX の詳細表
 4. **[内容](#内容)** → 要件・測定シナリオ・比較項目の定義（実装前スペック）
@@ -118,7 +145,7 @@
 - **Tauri**: `ToDoApp.Tauri/src-tauri/target/release/todoapp-tauri.exe`
 - **WPF**: `ToDoApp.Wpf/bin/Release/net8.0-windows/win-x64/ToDoApp.Wpf.exe`
 - **WinUI3**: `ToDoApp.WinUI/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/`（`ToDoApp.WinUI.exe` 直起動は不可。下記参照）
-- **wxWidgets**: `ToDoApp.wxWidgets/dist/main.dist/TodoApp.exe`（フォルダごと必要。onefile 単体は Defender 誤検知しやすい）
+- **wxWidgets**: `ToDoApp.wxWidgets/dist/main.dist/TodoApp.exe`（**フォルダごと ~100MB**。onefile 単体は小さいが Defender 誤検知しやすい）
 
 **起動時の注意（日本語）**:
 - **Flutter**: 上記 exe をダブルクリック、または `cd todoapp_flutter` → `flutter build windows --release` 後に同じパス。開発中は `flutter run -d windows`
@@ -401,6 +428,8 @@ GitHub ProjectのTable viewを参考にした、テーブル形式のプロジ�
 - ドキュメントの充実度
 - コミュニティサポート
 - テスタビリティ（UIテストの容易さ、自動化のしやすさなど）
+- スタイリング／テーマのしやすさ（CSS / Theme / XAML 等）
+- ネイティブグラフィクス API との親和性（大規模メッシュ描画・SwapChain / GL キャンバス等。総評の Graphics／ランキング B）
 
 ## 比較結果
 
@@ -617,20 +646,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 ### 実装面の比較
 
-| Framework             | LOC  | Dependencies | Build time (s) | Bundle size (MB) | Notes                                          |
-| --------------------- | ---- | ------------ | -------------- | ---------------- | ---------------------------------------------- |
-| Avalonia              | 2616 | 7            | 12             | 37               | Self-contained + trimmed (single-file publish) |
-| Compose Multiplatform | 1857 | 11           | 98             | 45               | MSI (`packageReleaseDistributionForCurrentOS`) |
-| Electron              | 2424 | 12           | 26             | 293              | `win-unpacked` (`dist` + `dist-electron` only) |
-| Flutter               | 2390 | 17           | 54             | 27               | `flutter build windows --release`              |
-| GPUI                  | -    | -            | -              | -                | Excluded (no file picker)                      |
-| MAUI                  | -    | -            | -              | -                | Excluded (unimplemented / WinUI3 overlap)      |
-| React Native          | -    | -            | -              | -                | Excluded (insufficient info)                   |
-| Tauri                 | 2266 | 25           | 146            | 11               | exe only (WebView2 runtime not included)       |
-| WinForms              | -    | -            | -              | -                | Excluded (limited UI)                          |
-| WPF                   | 2293 | 3            | 5              | 155              | Self-contained single-file (not trimmed)       |
-| WinUI3                | 2303 | 4            | 23             | 30               | Self-contained + trimmed publish               |
-| wxWidgets             | 2473 | 1            | 456            | 24               | Nuitka onefile (`TodoApp.exe`)                 |
+| Framework             | LOC  | Dependencies | Build time (s) | Bundle size (MB) | Notes                                                                                             |
+| --------------------- | ---- | ------------ | -------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
+| Avalonia              | 2616 | 7            | 12             | 37               | Self-contained + trimmed (single-file publish)                                                    |
+| Compose Multiplatform | 1857 | 11           | 98             | 45               | MSI (`packageReleaseDistributionForCurrentOS`)                                                    |
+| Electron              | 2424 | 12           | 26             | 293              | `win-unpacked` (`dist` + `dist-electron` only)                                                    |
+| Flutter               | 2390 | 17           | 54             | 27               | `flutter build windows --release`                                                                 |
+| GPUI                  | -    | -            | -              | -                | Excluded (no file picker)                                                                         |
+| MAUI                  | -    | -            | -              | -                | Excluded (unimplemented / WinUI3 overlap)                                                         |
+| React Native          | -    | -            | -              | -                | Excluded (insufficient info)                                                                      |
+| Tauri                 | 2266 | 25           | 146            | 11               | exe only (WebView2 runtime not included)                                                          |
+| WinForms              | -    | -            | -              | -                | Excluded (limited UI)                                                                             |
+| WPF                   | 2293 | 3            | 5              | 155              | Self-contained single-file (not trimmed)                                                          |
+| WinUI3                | 2303 | 4            | 23             | 30               | Self-contained + trimmed publish                                                                  |
+| wxWidgets             | 2473 | 1            | 456            | 100              | Nuitka **standalone** `dist/main.dist/` (~100MB). onefile ~24MB exists but often Defender-blocked |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -646,7 +675,7 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Build time / Bundle size: **プロジェクト成果物を毎回完全クリーンしたうえで Release 配布ビルドを 3 回実行し、平均値**（秒・MBは四捨五入）。測定スクリプト: `scripts/measure_impl.ps1`
   - 共通前提: グローバルなパッケージキャッシュは事前リストア済み（NuGet / npm / cargo registry / pub / Gradle wrapper）。ネットワーク取得時間は計測外
   - 各 run 前に `bin`/`obj`/`dist`/`target`/`build` 等の成果物を削除。Gradle は `--no-build-cache --no-configuration-cache`、Nuitka は `--disable-ccache`
-  - コマンド: `dotnet publish` / Gradle `packageReleaseDistributionForCurrentOS` / `tsc`+`vite`+`electron-builder` / `flutter build windows --release` / `vite`+`cargo build --release` / Nuitka onefile
+  - コマンド: `dotnet publish` / Gradle `packageReleaseDistributionForCurrentOS` / `tsc`+`vite`+`electron-builder` / `flutter build windows --release` / `vite`+`cargo build --release` / Nuitka **standalone**（`dist/main.dist` フォルダサイズ。onefile は Defender 誤検知のため非採用）
 - Bundle size: 実行可能な配布物フォルダ、または単一 exe / MSI（Notes 参照）。Electron は `files` を `dist`/`dist-electron` に限定し、旧成果物の混入を排除
 
 ### 実行時パフォーマンスの比較
@@ -753,20 +782,20 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 
 ### 開発体験の評価
 
-| Framework             | Ease of use | Docs  | Community | Testability | Overall | Notes                                |
-| --------------------- | ----------- | ----- | --------- | ----------- | ------- | ------------------------------------ |
-| Avalonia              | ****        | ***   | **        | ****        | ***     | XAML/MVVM; smaller desktop community |
-| Compose Multiplatform | **          | **    | **        | **          | **      | UI smooth; desktop/Gradle friction   |
-| Electron              | *****       | ***** | *****     | *****       | *****   | Web stack; Playwright ceiling        |
-| Flutter               | ****        | ***** | *****     | *****       | ****    | Strong docs / integration_test       |
-| GPUI                  | -           | -     | -         | -           | -       | Excluded (no file picker)            |
-| MAUI                  | -           | -     | -         | -           | -       | Excluded (WinUI3 wrapper)            |
-| React Native          | -           | -     | -         | -           | -       | Excluded (insufficient info)         |
-| Tauri                 | ***         | ***   | ***       | ****        | ***     | Easy front; Rust/WebView2 cost       |
-| WinForms              | -           | -     | -         | -           | -       | Excluded (limited UI)                |
-| WPF                   | ***         | ****  | ****      | ***         | ***     | Mature docs; verbose XAML/DataGrid   |
-| WinUI3                | *           | **    | **        | **          | *       | Appx/packaging heaviest DX cost      |
-| wxWidgets             | **          | **    | *         | *           | *       | Simple code; weak UI test ecosystem  |
+| Framework             | Ease of use | Docs  | Community | Testability | Styling | Overall | Notes                                  |
+| --------------------- | ----------- | ----- | --------- | ----------- | ------- | ------- | -------------------------------------- |
+| Avalonia              | ****        | ***   | **        | ****        | ****    | ***     | XAML themes; smaller desktop community |
+| Compose Multiplatform | **          | **    | **        | **          | ***     | **      | Material-ish; desktop/Gradle friction  |
+| Electron              | *****       | ***** | *****     | *****       | *****   | *****   | CSS/HTML; Playwright ceiling           |
+| Flutter               | ****        | ***** | *****     | *****       | ****    | ****    | Theme/widgets; strong docs/tests       |
+| GPUI                  | -           | -     | -         | -           | -       | -       | Excluded (no file picker)              |
+| MAUI                  | -           | -     | -         | -           | -       | -       | Excluded (WinUI3 wrapper)              |
+| React Native          | -           | -     | -         | -           | -       | -       | Excluded (insufficient info)           |
+| Tauri                 | ***         | ***   | ***       | ****        | *****   | ****    | CSS front like Electron; Rust/WebView2 |
+| WinForms              | -           | -     | -         | -           | -       | -       | Excluded (limited UI)                  |
+| WPF                   | ***         | ****  | ****      | ***         | ****    | ***     | Mature XAML styling; verbose DataGrid  |
+| WinUI3                | *           | **    | **        | **          | ***     | **      | XAML OK; Appx packaging dominates DX   |
+| wxWidgets             | **          | **    | *         | *           | *       | *       | Native look; hard fine-grained styling |
 
 **ヘッダー**:
 - Framework: フレームワーク
@@ -774,7 +803,8 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Docs: ドキュメント
 - Community: コミュニティ
 - Testability: テスタビリティ
-- Overall: 総合評価
+- Styling: スタイリング／テーマのしやすさ
+- Overall: 総合評価（Ease / Docs / Community / Testability / **Styling** の概ね平均）
 - Notes: 備考（英語・短い要約）
 
 **評価基準**:
@@ -783,21 +813,24 @@ GPUIは比較対象から除外しています。理由は以下の通りです�
 - Docs: `*****`（5段階）
 - Community: `*****`（5段階）
 - Testability: `*****`（5段階） - UIテスト自動化のしやすさ、ツール成熟度、テスト用フック（AutomationId / semantics など）
+- Styling: `*****`（5段階） - テーマ・ブランド色・レイアウト見た目のカスタムしやすさ（CSS / Theme / XAML / ネイティブ制約）
 - Overall: `*****`（5段階）
 
 **各フレームワークの解説**:
-- **Avalonia**: XAML+MVVM が WPF 知識で転用しやすい。Headless/UI テストはあるが、デスクトップ専業でコミュニティは小さめ
-- **Compose Multiplatform**: Compose UI 自体は快適。desktop / Gradle / 配布まわりの摩擦が大きく、desktop 向け情報も少なめ
-- **Electron**: Web スタックをそのまま使える。ドキュメント・コミュニティ・Playwright 等の UI テストがこの比較では天井
-- **Flutter**: ウィジェット開発は速い。公式 docs と `integration_test` が強い。Windows 固有はたまに調査コスト
-- **Tauri**: フロントは Electron に近い。Rust 側と WebView2 / ビルドで学習コストがある
-- **WPF**: 成熟して情報は豊富。XAML / DataGrid の記述量は多く、UI Automation / FlaUI 系が使える
-- **WinUI3**: 機能は揃うが、Appx 登録・パッケージ制約が本リポで最大の DX 負荷。UIA はあるが環境構築コストが高い
-- **wxWidgets**（wxPython）: 実装は素直。Python+wx のデスクトップ情報と UI 自動テストのエコシステムは弱い
+- **Avalonia**: XAML+MVVM が WPF 知識で転用しやすい。スタイル／テーマも XAML で比較的自由。コミュニティは小さめ
+- **Compose Multiplatform**: Compose UI は快適で Material 系テーマは容易。細かいブランド UI や desktop 配布は摩擦が大きい
+- **Electron**: Web（CSS）で見た目を最もコントロールしやすい。ドキュメント・Playwright も天井
+- **Flutter**: Theme / Widget でスタイリングしやすい。公式 docs と `integration_test` が強い
+- **Tauri**: フロントのスタイリングは Electron 同等（CSS）。Rust / WebView2 側の学習コストで Ease は一段下 → Overall は Electron より低く、スタイリング込みで Flutter に近い
+- **WPF**: XAML スタイリングは成熟。DataGrid／記述量と UI 応答が重い
+- **WinUI3**: XAML スタイル自体は可能だが、Appx 登録・パッケージ制約が DX を支配
+- **wxWidgets**（wxPython）: 実装は素直だが、**細かい見た目カスタムはネイティブ制約で弱い**。配布は ~100MB standalone など面倒さも残る
 - **GPUI / MAUI / React Native / WinForms**: 他表と同じ理由で除外（Notes 参照）
 
 **評価メモ**（2026-08、本リポ実装体験ベース）:
 - Ease は同一 Todo 実装時のつまずき・ビルド・デバッグのしやすさ。Docs / Community は公式資料とエコシステムの成熟度も加味
+- **Styling** を Overall に明示反映。ランキング A/B の DX 列もこの Overall（スタイリング込み）に合わせて再配点
 - Testability は本リポで UI 自動テスト未導入のため、フック／ツール成熟度の見込み評価
 - 星は実装 8 FW 内の**相対正規化**（各軸で概ね 1〜5 を使う）。絶対的な「業界合格点」ではなく差別化のための尺度
+- Overall は 5 軸の概ね平均（端数は体感で丸め）。天井 Electron / 床 wx
 - Overall は 4 軸の概ね平均（端数は体感で丸め）。天井 Electron / 床 WinUI・wx
